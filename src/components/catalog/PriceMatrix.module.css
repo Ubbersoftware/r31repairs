@@ -1,0 +1,43 @@
+.wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 320px;
+}
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.table thead th {
+  color: var(--text-muted);
+  font-weight: 600;
+  background: var(--surface-2);
+}
+.table tbody th {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+.priceCol {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.table td.priceCol {
+  color: var(--text-strong);
+  font-weight: 700;
+}
+.unavailable {
+  color: var(--text-faint);
+  font-weight: 500;
+}

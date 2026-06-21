@@ -1,0 +1,10 @@
+.intro {
+  color: var(--text-muted);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
