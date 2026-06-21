@@ -1,0 +1,28 @@
+.flist {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+}
+.flist li {
+  position: relative;
+  padding-left: var(--space-6);
+  color: var(--text);
+}
+.flist li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  color: var(--success);
+  font-weight: 800;
+}
+.flist li.off {
+  color: var(--text-faint);
+}
+.flist li.off::before {
+  content: "–";
+  color: var(--text-faint);
+}
