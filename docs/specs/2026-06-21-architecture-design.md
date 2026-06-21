@@ -47,7 +47,7 @@ PRD content (3-month warranty, BWP currency, copy, flows, data model) is unchang
 
 | Layer | Choice |
 |---|---|
-| Framework | Next.js 15 (App Router), React 19, TypeScript (strict) |
+| Framework | Next.js 16 (App Router), React 19, TypeScript (strict) — scaffolded by `create-next-app@latest`; consult `node_modules/next/dist/docs/` for v16 breaking changes (async route params, etc.) |
 | Styling | `tokens.css` (skill) global + CSS Modules per component; no CSS framework |
 | Fonts | Inter (self-hosted via `next/font`), system fallback stack from the skill |
 | Forms / validation | react-hook-form + zod |
