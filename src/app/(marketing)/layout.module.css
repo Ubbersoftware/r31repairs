@@ -1,0 +1,6 @@
+/* Leave room for the sticky mobile CTA bar so it never covers content. */
+@media (max-width: 768px) {
+  .main {
+    padding-bottom: 76px;
+  }
+}

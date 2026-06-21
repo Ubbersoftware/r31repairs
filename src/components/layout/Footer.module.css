@@ -1,0 +1,28 @@
+.footer {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-block: var(--space-8);
+}
+.cols {
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.footer h5 {
+  color: var(--text-strong);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--space-3);
+}
+.footer a {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  padding: var(--space-1) 0;
+}
+.footer a:hover {
+  color: var(--text-strong);
+}
+.muted {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
