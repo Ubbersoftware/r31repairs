@@ -1,0 +1,33 @@
+.hero {
+  text-align: center;
+  padding-block: var(--space-10) var(--space-9);
+}
+.title {
+  font-size: var(--fs-display);
+  margin-bottom: var(--space-4);
+}
+.sub {
+  font-size: var(--fs-body-lg);
+  color: var(--text-muted);
+  margin: 0 auto var(--space-6);
+}
+.cta {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.note {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+  margin: var(--space-5) auto 0;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding-block: var(--space-7) var(--space-7);
+  }
+  .cta {
+    flex-direction: column;
+  }
+}

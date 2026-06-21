@@ -1,0 +1,39 @@
+.heading {
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.cards {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.faqMore {
+  margin-top: var(--space-5);
+  font-weight: 600;
+}
+
+.contact {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.contactGrid {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: repeat(3, 1fr);
+}
+.contactLabel {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+.contactCta {
+  margin-top: var(--space-6);
+}
+
+@media (max-width: 640px) {
+  .contactGrid {
+    grid-template-columns: 1fr;
+  }
+}
