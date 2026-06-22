@@ -4,9 +4,16 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore'
 import { getAuth, type Auth, type DecodedIdToken } from 'firebase-admin/auth'
 
 export function getAdminApp(): App {
-  if (getApps().length) return getApp()
+  // Return the default app if it already exists (getApp() throws when no default app).
+  if (getApps().length) {
+    try { return getApp() } catch { /* only named apps exist — fall through to init default */ }
+  }
   const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT ?? '{}')
   if (!sa.project_id) throw new Error('FIREBASE_SERVICE_ACCOUNT is missing or invalid')
+  // When running against the Firestore emulator, credentials are not required.
+  if (process.env.FIRESTORE_EMULATOR_HOST) {
+    return initializeApp({ projectId: sa.project_id })
+  }
   return initializeApp({ credential: cert(sa) })
 }
 

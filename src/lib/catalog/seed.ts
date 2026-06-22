@@ -13,6 +13,7 @@ export const SEED_SERVICES: Service[] = [
     variants: ['Basic', 'OLED'],
     active: true,
     sortOrder: 1,
+    imageURL: null,
   },
   {
     id: 'battery',
@@ -25,6 +26,7 @@ export const SEED_SERVICES: Service[] = [
     variants: [],
     active: true,
     sortOrder: 2,
+    imageURL: null,
   },
   {
     id: 'back-glass',
@@ -37,6 +39,7 @@ export const SEED_SERVICES: Service[] = [
     variants: [],
     active: true,
     sortOrder: 3,
+    imageURL: null,
   },
 ]
 

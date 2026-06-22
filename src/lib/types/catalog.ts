@@ -8,6 +8,7 @@ export interface Service {
   variants: string[]
   active: boolean
   sortOrder: number
+  imageURL: string | null
 }
 
 export interface PhoneModel {
