@@ -6,11 +6,5 @@ export const metadata: Metadata = {
 }
 
 export default function RegisterPage() {
-  return (
-    <section className="section">
-      <div className="container">
-        <AuthForm mode="register" />
-      </div>
-    </section>
-  )
+  return <AuthForm mode="register" />
 }
