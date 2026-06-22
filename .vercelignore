@@ -1,0 +1,11 @@
+# Not needed for the Next.js build on Vercel
+docs/
+tests/
+scripts/
+*.rules
+firebase.json
+firestore.indexes.json
+vitest.config.ts
+vitest.rules.config.ts
+*-debug.log
+.firebase/
