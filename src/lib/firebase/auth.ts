@@ -10,12 +10,15 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db } from './client'
 
-export function newUserDoc(u: { uid: string; email: string | null; displayName: string | null }) {
+export function newUserDoc(
+  u: { uid: string; email: string | null; displayName: string | null },
+  phone = '',
+) {
   return {
     role: 'customer' as const,
     fullName: u.displayName ?? '',
     email: u.email ?? '',
-    phone: '',
+    phone,
     photoURL: '',
     fcmTokens: [] as string[],
     themePref: null as null | 'dark' | 'light',
@@ -23,22 +26,22 @@ export function newUserDoc(u: { uid: string; email: string | null; displayName: 
 }
 
 // Create the r31_users/{uid} profile doc on first sign-in only; never clobber an existing one.
-async function ensureUserDoc(user: User) {
+async function ensureUserDoc(user: User, phone = '') {
   const ref = doc(db, 'r31_users', user.uid)
   const snap = await getDoc(ref)
   if (!snap.exists()) {
     await setDoc(ref, {
-      ...newUserDoc(user),
+      ...newUserDoc(user, phone),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
   }
 }
 
-export async function registerWithEmail(name: string, email: string, password: string) {
+export async function registerWithEmail(name: string, email: string, password: string, phone = '') {
   const cred = await createUserWithEmailAndPassword(auth, email, password)
   await updateProfile(cred.user, { displayName: name })
-  await ensureUserDoc(cred.user)
+  await ensureUserDoc(cred.user, phone)
 }
 
 export async function loginWithEmail(email: string, password: string) {

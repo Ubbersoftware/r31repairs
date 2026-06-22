@@ -1,37 +1,55 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { registerWithEmail, loginWithEmail, loginWithGoogle } from '@/lib/firebase/auth'
 import styles from './AuthForm.module.css'
 
-const schema = z.object({
-  name: z.string().optional(),
-  email: z.string().email('Enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-})
-type FormValues = z.infer<typeof schema>
+interface FormValues {
+  name?: string
+  mobile?: string
+  email: string
+  password: string
+}
+
+// Name + mobile are required only when registering; login just needs email + password.
+function makeSchema(isRegister: boolean) {
+  return z.object({
+    name: isRegister ? z.string().trim().min(1, 'Enter your name') : z.string().optional(),
+    mobile: isRegister
+      ? z.string().regex(/^\d{7,15}$/, 'Enter a valid mobile number (digits only)')
+      : z.string().optional(),
+    email: z.string().email('Enter a valid email address'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  })
+}
 
 export function AuthForm({ mode }: { mode: 'register' | 'login' }) {
   const router = useRouter()
   const [formError, setFormError] = useState<string | null>(null)
   const isRegister = mode === 'register'
 
+  const schema = useMemo(() => makeSchema(isRegister), [isRegister])
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({ resolver: zodResolver(schema) as Resolver<FormValues> })
 
   async function onSubmit(values: FormValues) {
     setFormError(null)
     try {
       if (isRegister) {
-        await registerWithEmail(values.name?.trim() || '', values.email, values.password)
+        await registerWithEmail(
+          values.name?.trim() || '',
+          values.email,
+          values.password,
+          values.mobile?.trim() || '',
+        )
       } else {
         await loginWithEmail(values.email, values.password)
       }
@@ -60,6 +78,29 @@ export function AuthForm({ mode }: { mode: 'register' | 'login' }) {
           <label className={styles.label} htmlFor="name">Full name</label>
           <input className={styles.input} id="name" type="text" autoComplete="name"
             placeholder="Thabo Modise" {...register('name')} />
+          {errors.name && <p className={styles.error}>{errors.name.message}</p>}
+        </div>
+      )}
+
+      {isRegister && (
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="mobile">Mobile number</label>
+          <input
+            className={styles.input}
+            id="mobile"
+            type="tel"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="tel"
+            placeholder="71234567"
+            {...register('mobile', {
+              // Strip anything that isn't a digit as the user types.
+              onChange: (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '')
+              },
+            })}
+          />
+          {errors.mobile && <p className={styles.error}>{errors.mobile.message}</p>}
         </div>
       )}
 
@@ -112,6 +153,8 @@ function messageFor(err: unknown): string {
       return 'Incorrect email or password.'
     case 'auth/popup-closed-by-user':
       return 'Google sign-in was cancelled.'
+    case 'permission-denied':
+      return 'We could not save your profile. Please try again or contact us.'
     default:
       return 'Something went wrong. Please try again.'
   }

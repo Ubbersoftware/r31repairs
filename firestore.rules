@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isOwner() { return isSignedIn() && request.auth.token.role == 'owner'; }
+    function isSelf(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    match /r31_users/{uid} {
+      allow read: if isSelf(uid) || isOwner();
+      allow create: if isSelf(uid) && request.resource.data.role == 'customer';
+      allow update: if (isSelf(uid) && request.resource.data.role == resource.data.role) || isOwner();
+      allow delete: if false;
+    }
+    match /r31_services/{id}    { allow read: if true; allow write: if isOwner(); }
+    match /r31_phoneModels/{id} { allow read: if true; allow write: if isOwner(); }
+    match /r31_prices/{id}      { allow read: if true; allow write: if isOwner(); }
+    match /r31_faqs/{id}        { allow read: if true; allow write: if isOwner(); }
+    match /r31_settings/{id}    { allow read: if true; allow write: if isOwner(); }
+
+    match /r31_orders/{id} {
+      allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;
+      allow update, delete: if isOwner();
+      match /events/{eventId} {
+        allow read: if isOwner() || (isSignedIn() && get(/databases/$(database)/documents/r31_orders/$(id)).data.customerId == request.auth.uid);
+        allow create: if isOwner();
+        allow update, delete: if false;
+      }
+    }
+    match /r31_invoices/{id} {
+      allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
+      allow write: if isOwner();
+    }
+    match /r31_warranties/{id} {
+      allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
+      allow write: if isOwner();
+      match /claims/{claimId} {
+        allow read: if isOwner() || (isSignedIn() && get(/databases/$(database)/documents/r31_warranties/$(id)).data.customerId == request.auth.uid);
+        allow create: if isSignedIn();
+        allow update: if isOwner();
+        allow delete: if false;
+      }
+    }
+    match /r31_notifications/{id} {
+      allow read, update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, delete: if false;
+    }
+    match /r31_counters/{id} { allow read, write: if false; }
+  }
+}
