@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { logout } from '@/lib/firebase/auth'
@@ -19,6 +20,7 @@ const LINKS = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const [open, setOpen] = useState(false)
 
   async function onSignOut() {
     await logout()
@@ -28,24 +30,42 @@ export function AdminSidebar() {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.top}>
-        <Link className={styles.brand} href="/">
+        <Link className={styles.brand} href="/" onClick={() => setOpen(false)}>
           31<span>Repairs</span>
         </Link>
-        <ThemeToggle />
+        <div className={styles.controls}>
+          <ThemeToggle />
+          <button
+            type="button"
+            className={styles.burger}
+            aria-label="Menu"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            ☰
+          </button>
+        </div>
       </div>
-      <nav className={styles.nav}>
-        {LINKS.map((l) => {
-          const active = pathname === l.href
-          return (
-            <Link key={l.href} href={l.href} className={active ? styles.active : undefined}>
-              {l.label}
-            </Link>
-          )
-        })}
-      </nav>
-      <button type="button" className={styles.signout} onClick={onSignOut}>
-        Sign out
-      </button>
+      <div className={`${styles.panel} ${open ? styles.panelOpen : ''}`}>
+        <nav className={styles.nav}>
+          {LINKS.map((l) => {
+            const active = pathname === l.href
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className={active ? styles.active : undefined}
+              >
+                {l.label}
+              </Link>
+            )
+          })}
+        </nav>
+        <button type="button" className={styles.signout} onClick={onSignOut}>
+          Sign out
+        </button>
+      </div>
     </aside>
   )
 }
