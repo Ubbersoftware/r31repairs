@@ -1,21 +1,25 @@
 import { describe, it, expect } from 'vitest'
 import { priceFor, fromPrice } from './pricing'
+import type { PriceDoc } from '@/lib/types/catalog'
 
-describe('pricing', () => {
-  it('returns the exact battery price in thebe', () => {
-    // iPhone 13 Pro battery = P900
-    expect(priceFor('battery', 'iphone-13-pro')).toBe(90000)
+const M: PriceDoc[] = [
+  { serviceId: 'screen', modelId: 'iphone-13', variant: 'Basic', amount: 100000, available: true },
+  { serviceId: 'screen', modelId: 'iphone-13', variant: 'OLED', amount: 200000, available: true },
+  { serviceId: 'screen', modelId: 'iphone-12', variant: 'Basic', amount: 90000, available: false },
+  { serviceId: 'battery', modelId: 'iphone-13', variant: null, amount: 80000, available: true },
+]
+
+describe('priceFor', () => {
+  it('returns the amount for an available cell', () => {
+    expect(priceFor(M, 'screen', 'iphone-13', 'OLED')).toBe(200000)
   })
-  it('distinguishes screen variants', () => {
-    // iPhone 13 Pro screen: Basic P1400, OLED P2500
-    expect(priceFor('screen', 'iphone-13-pro', 'Basic')).toBe(140000)
-    expect(priceFor('screen', 'iphone-13-pro', 'OLED')).toBe(250000)
+  it('returns null for an unavailable cell', () => {
+    expect(priceFor(M, 'screen', 'iphone-12', 'Basic')).toBeNull()
   })
-  it('returns null for an unknown combination', () => {
-    expect(priceFor('screen', 'nokia-3310', 'OLED')).toBeNull()
-  })
-  it('fromPrice returns the lowest available price for a service', () => {
-    // cheapest battery in the seed is P500 (iPhone X) = 50000 thebe
-    expect(fromPrice('battery')).toBe(50000)
+})
+
+describe('fromPrice', () => {
+  it('returns the minimum available amount for a service', () => {
+    expect(fromPrice(M, 'screen')).toBe(100000)
   })
 })
