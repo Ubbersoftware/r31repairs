@@ -25,3 +25,23 @@ export interface PriceCell {
   amount: number
   available: boolean
 }
+
+export interface Faq {
+  id: string
+  question: string
+  answer: string
+  category: string
+  active: boolean
+  sortOrder: number
+}
+
+// Firestore document shape for prices (composite-ID keyed). serviceId = slug.
+export interface PriceDoc {
+  serviceId: string
+  modelId: string
+  variant: string | null
+  amount: number // thebe
+  available: boolean
+  updatedAt?: number // epoch ms
+  updatedBy?: string // uid
+}
