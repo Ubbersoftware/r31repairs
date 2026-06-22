@@ -1,0 +1,32 @@
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+.bar {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+}
+.brand {
+  font-weight: 800;
+  font-size: var(--fs-h4);
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+.brand span {
+  color: var(--text-strong);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
