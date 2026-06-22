@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ThemeScript } from '@/components/layout/ThemeScript'
+import { AuthProvider } from '@/components/auth/AuthProvider'
 import '@/styles/globals.css'
 
 const inter = Inter({
@@ -22,7 +23,9 @@ export default function RootLayout({
       <head>
         <ThemeScript />
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   )
 }
