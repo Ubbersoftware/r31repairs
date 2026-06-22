@@ -48,6 +48,17 @@ export async function loginWithEmail(email: string, password: string) {
   await signInWithEmailAndPassword(auth, email, password)
 }
 
+// Read the role from the freshly-signed-in user's ID token so callers can route
+// owners to /admin and everyone else to /account.
+export async function getCurrentRole(): Promise<'owner' | 'customer'> {
+  const token = await auth.currentUser?.getIdTokenResult()
+  return token?.claims.role === 'owner' ? 'owner' : 'customer'
+}
+
+export function homeForRole(role: 'owner' | 'customer'): string {
+  return role === 'owner' ? '/admin' : '/account'
+}
+
 export async function loginWithGoogle() {
   const cred = await signInWithPopup(auth, new GoogleAuthProvider())
   await ensureUserDoc(cred.user)

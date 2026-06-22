@@ -6,7 +6,13 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
-import { registerWithEmail, loginWithEmail, loginWithGoogle } from '@/lib/firebase/auth'
+import {
+  registerWithEmail,
+  loginWithEmail,
+  loginWithGoogle,
+  getCurrentRole,
+  homeForRole,
+} from '@/lib/firebase/auth'
 import styles from './AuthForm.module.css'
 
 interface FormValues {
@@ -44,16 +50,18 @@ export function AuthForm({ mode }: { mode: 'register' | 'login' }) {
     setFormError(null)
     try {
       if (isRegister) {
+        // New registrations are always customers.
         await registerWithEmail(
           values.name?.trim() || '',
           values.email,
           values.password,
           values.mobile?.trim() || '',
         )
+        router.push('/account')
       } else {
         await loginWithEmail(values.email, values.password)
+        router.push(homeForRole(await getCurrentRole()))
       }
-      router.push('/account')
     } catch (err) {
       setFormError(messageFor(err))
     }
@@ -63,7 +71,7 @@ export function AuthForm({ mode }: { mode: 'register' | 'login' }) {
     setFormError(null)
     try {
       await loginWithGoogle()
-      router.push('/account')
+      router.push(homeForRole(await getCurrentRole()))
     } catch (err) {
       setFormError(messageFor(err))
     }
