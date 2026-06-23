@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { priceEditSchema, serviceInputSchema } from './validation'
+import { priceEditSchema, serviceInputSchema, faqInputSchema } from './validation'
 
 describe('priceEditSchema', () => {
   it('accepts a valid edit', () => {
@@ -15,4 +15,9 @@ describe('serviceInputSchema', () => {
   it('rejects an empty description', () => {
     expect(serviceInputSchema.safeParse({ id: 'screen', description: '', active: true }).success).toBe(false)
   })
+})
+
+it('faqInputSchema requires question and answer', () => {
+  expect(faqInputSchema.safeParse({ question: '', answer: 'a', category: 'general', active: true, sortOrder: 1 }).success).toBe(false)
+  expect(faqInputSchema.safeParse({ question: 'q', answer: 'a', category: 'general', active: true, sortOrder: 1 }).success).toBe(true)
 })
