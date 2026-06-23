@@ -129,6 +129,9 @@
 }
 
 .orderLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--accent);
   font-weight: 600;
   text-decoration: none;
