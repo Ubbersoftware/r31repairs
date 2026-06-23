@@ -6,7 +6,7 @@ import {
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import { readFileSync } from 'node:fs'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore'
 
 let env: RulesTestEnvironment
 
@@ -62,5 +62,46 @@ describe('firestore rules', () => {
     })
     const db = env.authenticatedContext('cust', { role: 'customer' }).firestore()
     await assertSucceeds(getDoc(doc(db, 'r31_orders/o2')))
+  })
+})
+
+describe('catalog rules', () => {
+  it('anyone can read services, nobody-but-owner can write', async () => {
+    const anon = env.unauthenticatedContext().firestore()
+    await assertSucceeds(getDoc(doc(anon, 'services/screen')))
+    await assertFails(setDoc(doc(anon, 'services/screen'), { name: 'x' }))
+
+    const customer = env.authenticatedContext('c1', { role: 'customer' }).firestore()
+    await assertFails(
+      setDoc(doc(customer, 'prices/battery__iphone-13__none'), { amount: 1 }),
+    )
+
+    const owner = env.authenticatedContext('o1', { role: 'owner' }).firestore()
+    await assertSucceeds(
+      setDoc(doc(owner, 'prices/battery__iphone-13__none'), {
+        amount: 1,
+        serviceId: 'battery',
+        modelId: 'iphone-13',
+        variant: null,
+        available: true,
+      }),
+    )
+  })
+
+  it('faqs are public-read, owner-write', async () => {
+    const anon = env.unauthenticatedContext().firestore()
+    await assertSucceeds(getDoc(doc(anon, 'faqs/faq-1')))
+    await assertFails(setDoc(doc(anon, 'faqs/faq-1'), { question: 'x' }))
+
+    const owner = env.authenticatedContext('o1', { role: 'owner' }).firestore()
+    await assertSucceeds(
+      setDoc(doc(owner, 'faqs/faq-1'), {
+        question: 'q',
+        answer: 'a',
+        category: 'general',
+        active: true,
+        sortOrder: 1,
+      }),
+    )
   })
 })

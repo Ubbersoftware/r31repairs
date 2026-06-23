@@ -3,6 +3,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isOwner() { return request.auth != null && request.auth.token.role == 'owner'; }
     match /r31/service-images/{file=**}   { allow read: if true; allow write: if isOwner(); }
+    match /service-images/{file=**}       { allow read: if true; allow write: if isOwner(); }
     match /r31/branding/{file=**}          { allow read: if true; allow write: if isOwner(); }
     match /r31/proof-of-payment/{orderId}/{file=**} { allow read, write: if request.auth != null; }
     match /r31/signatures/{orderId}/{file=**}       { allow read, write: if request.auth != null; }
