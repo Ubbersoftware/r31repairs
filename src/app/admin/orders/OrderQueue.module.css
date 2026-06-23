@@ -1,0 +1,223 @@
+/* OrderQueue — admin order list: filter chips + search + responsive rows/cards */
+
+.root {
+  margin-top: var(--space-5);
+}
+
+/* ---- Toolbar (chips + search) ---- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  white-space: nowrap;
+  min-height: 44px;
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.chipActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.search {
+  height: 44px;
+  min-width: 180px;
+  max-width: 260px;
+  flex-shrink: 0;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.search:focus {
+  border-color: var(--accent);
+}
+
+.search::placeholder {
+  color: var(--text-faint);
+}
+
+/* ---- Empty / error ---- */
+.empty {
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+/* ============================================================
+   Desktop table
+   ============================================================ */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableHead th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.tableRow {
+  border-bottom: 1px solid var(--border);
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.tableRow:hover {
+  background: var(--surface-2);
+}
+
+.tableRow td {
+  padding: var(--space-3);
+  vertical-align: middle;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+.orderNum {
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.customerName {
+  font-weight: 500;
+  color: var(--text-strong);
+}
+
+.summary {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.age {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.viewLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  min-height: 44px;
+}
+
+.viewLink:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* ============================================================
+   Mobile cards — override table layout below 640px
+   ============================================================ */
+@media (max-width: 639px) {
+  .table,
+  .tableHead,
+  .tableRow,
+  .table tbody,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .tableHead {
+    display: none;
+  }
+
+  .tableRow {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    overflow: hidden;
+  }
+
+  .tableRow:hover {
+    background: var(--surface-2);
+  }
+
+  .tableRow td {
+    padding: var(--space-1) 0;
+    border: none;
+  }
+
+  /* Card header row: order number + link */
+  .tableRow td:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+  }
+
+  .age {
+    text-align: left;
+  }
+
+  .summary {
+    max-width: 100%;
+    white-space: normal;
+  }
+}
