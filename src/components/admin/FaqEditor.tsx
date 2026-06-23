@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { auth } from '@/lib/firebase/client'
 import { saveFaqAction, deleteFaqAction, reorderFaqAction } from '@/app/admin/faq/actions'
 import type { Faq } from '@/lib/types/catalog'
@@ -8,16 +8,15 @@ import styles from './FaqEditor.module.css'
 // New unsaved rows use a temporary local key (negative number as string) that is NOT sent to
 // Firestore. On a successful add-save, we reload the page so the server re-reads via getAllFaqs()
 // and the real Firestore id replaces the temporary one. This is the simpler approach (option a).
-let _tempKey = -1
-function tempKey() {
-  return String(--_tempKey)
-}
 
 type LocalFaq = Faq & { _isNew?: boolean }
 
 export function FaqEditor({ faqs: initial }: { faqs: Faq[] }) {
   const [faqs, setFaqs] = useState<LocalFaq[]>(initial)
   const [status, setStatus] = useState<Record<string, string>>({})
+  const [reorderError, setReorderError] = useState(false)
+  // Fix 3: temp-key counter lives in the component to avoid cross-render/test leakage
+  const tempKeyRef = useRef(-1)
 
   function patch(id: string, p: Partial<Faq>) {
     setFaqs((list) => list.map((f) => (f.id === id ? { ...f, ...p } : f)))
@@ -46,13 +45,14 @@ export function FaqEditor({ faqs: initial }: { faqs: Faq[] }) {
   }
 
   async function remove(id: string) {
-    const idToken = await auth.currentUser?.getIdToken()
-    if (!idToken) return
-    // If it's an unsaved new row, just remove it locally
-    if (id.startsWith('-')) {
+    // Fix 2: identify new rows by _isNew flag, not the id prefix heuristic
+    const target = faqs.find((f) => f.id === id)
+    if (target?._isNew) {
       setFaqs((list) => list.filter((f) => f.id !== id))
       return
     }
+    const idToken = await auth.currentUser?.getIdToken()
+    if (!idToken) return
     const res = await deleteFaqAction(idToken, id)
     if (res.ok) {
       setFaqs((list) => list.filter((f) => f.id !== id))
@@ -60,8 +60,9 @@ export function FaqEditor({ faqs: initial }: { faqs: Faq[] }) {
   }
 
   function addNew() {
+    // Fix 3: use ref-based counter instead of module-level mutable state
     const newFaq: LocalFaq = {
-      id: tempKey(),
+      id: String(tempKeyRef.current--),
       question: '',
       answer: '',
       category: 'general',
@@ -74,30 +75,59 @@ export function FaqEditor({ faqs: initial }: { faqs: Faq[] }) {
 
   async function moveUp(index: number) {
     if (index === 0) return
+    // Fix 1: optimistic-with-revert pattern
+    const snapshot = faqs
     const next = [...faqs]
     ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
     setFaqs(next)
     const ids = next.filter((f) => !f._isNew).map((f) => f.id)
     if (ids.length === 0) return
     const idToken = await auth.currentUser?.getIdToken()
-    if (!idToken) return
-    await reorderFaqAction(idToken, ids)
+    if (!idToken) {
+      setFaqs(snapshot)
+      setReorderError(true)
+      return
+    }
+    const res = await reorderFaqAction(idToken, ids)
+    if (!res.ok) {
+      setFaqs(snapshot)
+      setReorderError(true)
+    } else {
+      setReorderError(false)
+    }
   }
 
   async function moveDown(index: number) {
     if (index >= faqs.length - 1) return
+    // Fix 1: optimistic-with-revert pattern
+    const snapshot = faqs
     const next = [...faqs]
     ;[next[index], next[index + 1]] = [next[index + 1], next[index]]
     setFaqs(next)
     const ids = next.filter((f) => !f._isNew).map((f) => f.id)
     if (ids.length === 0) return
     const idToken = await auth.currentUser?.getIdToken()
-    if (!idToken) return
-    await reorderFaqAction(idToken, ids)
+    if (!idToken) {
+      setFaqs(snapshot)
+      setReorderError(true)
+      return
+    }
+    const res = await reorderFaqAction(idToken, ids)
+    if (!res.ok) {
+      setFaqs(snapshot)
+      setReorderError(true)
+    } else {
+      setReorderError(false)
+    }
   }
 
   return (
     <div className={styles.list}>
+      {reorderError && (
+        <span role="alert" className={styles.errorMsg}>
+          Could not reorder — changes reverted
+        </span>
+      )}
       {faqs.map((f, index) => (
         <div key={f.id} className={styles.item}>
           <div className={styles.itemHeader}>
@@ -107,7 +137,7 @@ export function FaqEditor({ faqs: initial }: { faqs: Faq[] }) {
                 type="button"
                 onClick={() => moveUp(index)}
                 disabled={index === 0}
-                aria-label={`Move up ${f.id}`}
+                aria-label={`Move ${f.id} up`}
                 className={styles.iconBtn}
               >
                 ↑
@@ -116,7 +146,7 @@ export function FaqEditor({ faqs: initial }: { faqs: Faq[] }) {
                 type="button"
                 onClick={() => moveDown(index)}
                 disabled={index >= faqs.length - 1}
-                aria-label={`Move down ${f.id}`}
+                aria-label={`Move ${f.id} down`}
                 className={styles.iconBtn}
               >
                 ↓
@@ -208,7 +238,7 @@ export function FaqEditor({ faqs: initial }: { faqs: Faq[] }) {
       ))}
 
       <div className={styles.addRow}>
-        <button type="button" onClick={addNew} className={styles.addBtn}>
+        <button type="button" onClick={addNew} aria-label="Add new FAQ" className={styles.addBtn}>
           + Add FAQ
         </button>
       </div>
