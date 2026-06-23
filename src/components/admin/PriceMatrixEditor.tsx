@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { auth } from '@/lib/firebase/client'
 import { savePricesAction } from '@/app/admin/catalog/actions'
 import { priceId } from '@/lib/catalog/ids'
@@ -41,7 +41,7 @@ export function PriceMatrixEditor({
   models: PhoneModel[]
   matrix: PriceDoc[]
 }) {
-  const cols = buildColumns(services)
+  const cols = useMemo(() => buildColumns(services), [services])
   const [cells, setCells] = useState(() => buildInitialCells(matrix))
   const [dirty, setDirty] = useState<Set<string>>(new Set())
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -120,7 +120,7 @@ export function PriceMatrixEditor({
                           className={styles.priceInput}
                           aria-label={`${c.label} price for ${m.name}`}
                           inputMode="numeric"
-                          value={String(fromThebe(cell.amount))}
+                          value={String(Math.round(fromThebe(cell.amount)))}
                           onChange={(e) =>
                             updateCell(id, { amount: toThebe(Number(e.target.value) || 0) })
                           }

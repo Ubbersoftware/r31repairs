@@ -22,8 +22,12 @@ export function ImageUploader({
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!ALLOWED_TYPES.includes(file.type) || file.size > MAX_SIZE) {
-      setErr('Use a JPEG, PNG, or WebP under 5 MB')
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setErr('Use a JPEG, PNG, or WebP image')
+      return
+    }
+    if (file.size > MAX_SIZE) {
+      setErr('Image must be under 5 MB')
       return
     }
 

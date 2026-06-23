@@ -11,6 +11,9 @@ export function ServiceEditorCard({ service }: { service: Service }) {
   const [description, setDescription] = useState(service.description)
   const [active, setActive] = useState(service.active)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [dirty, setDirty] = useState(false)
+  const [savedDescription, setSavedDescription] = useState(service.description)
+  const [savedActive, setSavedActive] = useState(service.active)
 
   async function save() {
     setStatus('saving')
@@ -21,6 +24,9 @@ export function ServiceEditorCard({ service }: { service: Service }) {
     }
     const res = await saveServiceAction(idToken, { id: service.id, description, active })
     if (res.ok) {
+      setSavedDescription(description)
+      setSavedActive(active)
+      setDirty(false)
       setStatus('saved')
     } else {
       setStatus('error')
@@ -36,8 +42,10 @@ export function ServiceEditorCard({ service }: { service: Service }) {
             type="checkbox"
             checked={active}
             onChange={(e) => {
-              setActive(e.target.checked)
+              const next = e.target.checked
+              setActive(next)
               setStatus('idle')
+              setDirty(next !== savedActive || description !== savedDescription)
             }}
             aria-label={`${service.name} active`}
           />
@@ -54,8 +62,10 @@ export function ServiceEditorCard({ service }: { service: Service }) {
           className={styles.textarea}
           value={description}
           onChange={(e) => {
-            setDescription(e.target.value)
+            const next = e.target.value
+            setDescription(next)
             setStatus('idle')
+            setDirty(next !== savedDescription || active !== savedActive)
           }}
           rows={4}
           placeholder="Describe this service for customers…"
@@ -66,7 +76,7 @@ export function ServiceEditorCard({ service }: { service: Service }) {
         <Button
           type="button"
           onClick={save}
-          disabled={status === 'saving'}
+          disabled={!dirty || status === 'saving'}
           variant="primary"
         >
           {status === 'saving' ? 'Saving…' : 'Save'}
