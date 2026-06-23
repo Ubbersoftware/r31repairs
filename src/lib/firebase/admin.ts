@@ -12,6 +12,9 @@ export function getAdminApp(): App {
   if (!sa.project_id) throw new Error('FIREBASE_SERVICE_ACCOUNT is missing or invalid')
   // When running against the Firestore emulator, credentials are not required.
   if (process.env.FIRESTORE_EMULATOR_HOST) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FIRESTORE_EMULATOR_HOST must not be set in production')
+    }
     return initializeApp({ projectId: sa.project_id })
   }
   return initializeApp({ credential: cert(sa) })

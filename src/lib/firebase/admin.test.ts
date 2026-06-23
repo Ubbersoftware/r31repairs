@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
@@ -36,5 +36,47 @@ describe('admin', () => {
   it('verifyOwner rejects a missing token with UNAUTHENTICATED', async () => {
     const { verifyOwner } = await import('./admin')
     await expect(verifyOwner('')).rejects.toThrow('UNAUTHENTICATED')
+  })
+})
+
+describe('getAdminApp() emulator production guard', () => {
+  const originalNodeEnv = process.env.NODE_ENV
+  const originalEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST
+
+  afterEach(() => {
+    // Restore env vars so other tests are unaffected.
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV
+    } else {
+      process.env.NODE_ENV = originalNodeEnv
+    }
+    if (originalEmulatorHost === undefined) {
+      delete process.env.FIRESTORE_EMULATOR_HOST
+    } else {
+      process.env.FIRESTORE_EMULATOR_HOST = originalEmulatorHost
+    }
+    vi.resetModules()
+  })
+
+  it('throws when FIRESTORE_EMULATOR_HOST is set in production', async () => {
+    process.env.NODE_ENV = 'production'
+    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080'
+    // Re-register mocks with a fresh apps array so the singleton hasn't been
+    // initialised yet, ensuring getAdminApp() reaches the emulator branch.
+    vi.resetModules()
+    vi.doMock('firebase-admin/app', () => {
+      const apps: unknown[] = []
+      return {
+        getApps: () => apps,
+        getApp: () => apps[0],
+        initializeApp: (opts: unknown) => { const a = { opts }; apps.push(a); return a },
+        cert: (sa: unknown) => ({ sa }),
+      }
+    })
+    vi.doMock('firebase-admin/firestore', () => ({ getFirestore: () => ({ kind: 'db' }) }))
+    vi.doMock('firebase-admin/auth', () => ({ getAuth: () => ({}) }))
+    vi.doMock('server-only', () => ({}))
+    const { getAdminDb } = await import('./admin')
+    expect(() => getAdminDb()).toThrow('FIRESTORE_EMULATOR_HOST must not be set in production')
   })
 })
