@@ -39,3 +39,12 @@ export async function verifyOwner(idToken: string): Promise<DecodedIdToken> {
   if (decoded.role !== 'owner') throw new Error('FORBIDDEN')
   return decoded
 }
+
+export async function verifyUser(idToken: string): Promise<DecodedIdToken> {
+  if (!idToken) throw new Error('UNAUTHENTICATED')
+  try {
+    return await getAdminAuth().verifyIdToken(idToken)
+  } catch {
+    throw new Error('UNAUTHENTICATED')
+  }
+}
