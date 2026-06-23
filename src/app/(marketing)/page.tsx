@@ -4,11 +4,12 @@ import { HowItWorks } from '@/components/marketing/HowItWorks'
 import { ServiceCard } from '@/components/ui/ServiceCard'
 import { Faq } from '@/components/ui/Faq'
 import { Button } from '@/components/ui/Button'
-import { SEED_SERVICES } from '@/lib/catalog/seed'
+import { getActiveServices, getPriceMatrix, getActiveFaqs } from '@/lib/catalog/queries'
 import { fromPrice } from '@/lib/catalog/pricing'
 import { formatPula } from '@/lib/money'
-import { FAQ_ITEMS } from '@/lib/content/faq'
 import styles from './page.module.css'
+
+export const revalidate = 3600
 
 const SERVICE_ICONS: Record<string, string> = {
   screen: '📱',
@@ -18,7 +19,13 @@ const SERVICE_ICONS: Record<string, string> = {
 
 const MAP_URL = 'https://maps.app.goo.gl/yums9aXYCW93K94a8'
 
-export default function Home() {
+export default async function Home() {
+  const [services, matrix, faqs] = await Promise.all([
+    getActiveServices(),
+    getPriceMatrix(),
+    getActiveFaqs(),
+  ])
+
   return (
     <>
       <Hero />
@@ -29,8 +36,8 @@ export default function Home() {
           <p className="overline">Popular repairs</p>
           <h2 className={styles.heading}>Fixed fast, priced up front.</h2>
           <div className={styles.cards}>
-            {SEED_SERVICES.filter((s) => s.active).map((s) => {
-              const from = fromPrice(s.slug)
+            {services.map((s) => {
+              const from = fromPrice(matrix, s.id)
               return (
                 <ServiceCard
                   key={s.id}
@@ -50,7 +57,7 @@ export default function Home() {
         <div className="container">
           <p className="overline">FAQ</p>
           <h2 className={styles.heading}>Good to know.</h2>
-          <Faq items={FAQ_ITEMS.slice(0, 4)} />
+          <Faq items={faqs.slice(0, 4).map((f) => ({ q: f.question, a: f.answer }))} />
           <p className={styles.faqMore}>
             <Link href="/faq">See all questions →</Link>
           </p>

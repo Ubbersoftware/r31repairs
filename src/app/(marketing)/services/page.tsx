@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { ServiceCard } from '@/components/ui/ServiceCard'
-import { SEED_SERVICES } from '@/lib/catalog/seed'
+import { getActiveServices, getPriceMatrix } from '@/lib/catalog/queries'
 import { fromPrice } from '@/lib/catalog/pricing'
 import { formatPula } from '@/lib/money'
 import styles from './page.module.css'
@@ -10,13 +10,16 @@ export const metadata: Metadata = {
   description: 'iPhone screen, battery and back-glass repair pricing for every model.',
 }
 
+export const revalidate = 3600
+
 const SERVICE_ICONS: Record<string, string> = {
   screen: '📱',
   battery: '🔋',
   'back-glass': '🪟',
 }
 
-export default function ServicesPage() {
+export default async function ServicesPage() {
+  const [services, matrix] = await Promise.all([getActiveServices(), getPriceMatrix()])
   return (
     <section className="section">
       <div className="container">
@@ -27,8 +30,8 @@ export default function ServicesPage() {
           include a 3-month warranty.
         </p>
         <div className={styles.grid}>
-          {SEED_SERVICES.filter((s) => s.active).map((s) => {
-            const from = fromPrice(s.slug)
+          {services.map((s) => {
+            const from = fromPrice(matrix, s.id)
             return (
               <ServiceCard
                 key={s.id}

@@ -5,7 +5,7 @@ import { SegmentedToggle } from '@/components/ui/SegmentedToggle'
 import { PriceMatrix, type PriceRow } from './PriceMatrix'
 import { priceFor } from '@/lib/catalog/pricing'
 import { formatPula } from '@/lib/money'
-import type { Service, PhoneModel } from '@/lib/types/catalog'
+import type { Service, PhoneModel, PriceDoc } from '@/lib/types/catalog'
 import styles from './ServiceDetail.module.css'
 
 const SERVICE_ICONS: Record<string, string> = {
@@ -14,12 +14,20 @@ const SERVICE_ICONS: Record<string, string> = {
   'back-glass': '🪟',
 }
 
-export function ServiceDetail({ service, models }: { service: Service; models: PhoneModel[] }) {
+export function ServiceDetail({
+  service,
+  models,
+  matrix,
+}: {
+  service: Service
+  models: PhoneModel[]
+  matrix: PriceDoc[]
+}) {
   const [variant, setVariant] = useState<string>(service.variants[0] ?? '')
 
   const activeVariant = service.hasVariants ? variant : null
   const rows: PriceRow[] = models.map((m) => {
-    const amount = priceFor(service.slug, m.id, activeVariant)
+    const amount = priceFor(matrix, service.id, m.id, activeVariant)
     return {
       model: m.name,
       price: amount !== null ? formatPula(amount) : 'Currently unavailable',

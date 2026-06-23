@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ServiceDetail } from '@/components/catalog/ServiceDetail'
-import { SEED_SERVICES, SEED_MODELS } from '@/lib/catalog/seed'
+import { getActiveServices, getServiceBySlug, getActiveModels, getPriceMatrix } from '@/lib/catalog/queries'
 
-export function generateStaticParams() {
-  return SEED_SERVICES.filter((s) => s.active).map((s) => ({ slug: s.slug }))
+export const revalidate = 3600
+
+export async function generateStaticParams() {
+  const services = await getActiveServices()
+  return services.map((s) => ({ slug: s.slug }))
 }
 
 export async function generateMetadata({
@@ -13,7 +16,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const service = SEED_SERVICES.find((s) => s.slug === slug && s.active)
+  const service = await getServiceBySlug(slug)
   if (!service) return { title: 'Service not found — 31Repairs' }
   return {
     title: `${service.name} — 31Repairs`,
@@ -27,9 +30,12 @@ export default async function ServiceDetailPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const service = SEED_SERVICES.find((s) => s.slug === slug && s.active)
+  const [service, models, matrix] = await Promise.all([
+    getServiceBySlug(slug),
+    getActiveModels(),
+    getPriceMatrix(),
+  ])
   if (!service) notFound()
 
-  const models = SEED_MODELS.filter((m) => m.active)
-  return <ServiceDetail service={service} models={models} />
+  return <ServiceDetail service={service} models={models} matrix={matrix} />
 }
