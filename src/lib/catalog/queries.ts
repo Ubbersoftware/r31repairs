@@ -29,3 +29,8 @@ export async function getActiveFaqs(): Promise<Faq[]> {
   const snap = await getAdminDb().collection('faqs').where('active', '==', true).get()
   return snap.docs.map((d) => toFaq(d.id, d.data())).sort((a, b) => a.sortOrder - b.sortOrder)
 }
+
+export async function getAllFaqs(): Promise<Faq[]> {
+  const snap = await getAdminDb().collection('faqs').get()
+  return snap.docs.map((d) => toFaq(d.id, d.data())).sort((a, b) => a.sortOrder - b.sortOrder)
+}
