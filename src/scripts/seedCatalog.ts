@@ -7,16 +7,16 @@ type Row = { col: string; id: string; data: Record<string, unknown> }
 
 function rows(): Row[] {
   const out: Row[] = []
-  for (const s of SEED_SERVICES) out.push({ col: 'services', id: s.id, data: { ...s, imageURL: null } })
-  for (const m of SEED_MODELS) out.push({ col: 'phoneModels', id: m.id, data: { ...m } })
+  for (const s of SEED_SERVICES) out.push({ col: 'r31_services', id: s.id, data: { ...s, imageURL: null } })
+  for (const m of SEED_MODELS) out.push({ col: 'r31_phoneModels', id: m.id, data: { ...m } })
   for (const p of SEED_PRICES) {
     const id = priceId(p.serviceSlug, p.modelId, p.variant)
     out.push({
-      col: 'prices', id,
+      col: 'r31_prices', id,
       data: { serviceId: p.serviceSlug, modelId: p.modelId, variant: p.variant, amount: p.amount, available: p.available },
     })
   }
-  for (const f of FAQ_SEED) out.push({ col: 'faqs', id: f.id, data: { ...f } })
+  for (const f of FAQ_SEED) out.push({ col: 'r31_faqs', id: f.id, data: { ...f } })
   return out
 }
 

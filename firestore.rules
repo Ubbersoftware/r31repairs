@@ -17,11 +17,6 @@ service cloud.firestore {
     match /r31_faqs/{id}        { allow read: if true; allow write: if isOwner(); }
     match /r31_settings/{id}    { allow read: if true; allow write: if isOwner(); }
 
-    match /services/{id}     { allow read: if true; allow write: if isOwner(); }
-    match /phoneModels/{id}  { allow read: if true; allow write: if isOwner(); }
-    match /prices/{id}       { allow read: if true; allow write: if isOwner(); }
-    match /faqs/{id}         { allow read: if true; allow write: if isOwner(); }
-
     match /r31_orders/{id} {
       allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;

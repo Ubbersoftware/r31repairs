@@ -68,17 +68,17 @@ describe('firestore rules', () => {
 describe('catalog rules', () => {
   it('anyone can read services, nobody-but-owner can write', async () => {
     const anon = env.unauthenticatedContext().firestore()
-    await assertSucceeds(getDoc(doc(anon, 'services/screen')))
-    await assertFails(setDoc(doc(anon, 'services/screen'), { name: 'x' }))
+    await assertSucceeds(getDoc(doc(anon, 'r31_services/screen')))
+    await assertFails(setDoc(doc(anon, 'r31_services/screen'), { name: 'x' }))
 
     const customer = env.authenticatedContext('c1', { role: 'customer' }).firestore()
     await assertFails(
-      setDoc(doc(customer, 'prices/battery__iphone-13__none'), { amount: 1 }),
+      setDoc(doc(customer, 'r31_prices/battery__iphone-13__none'), { amount: 1 }),
     )
 
     const owner = env.authenticatedContext('o1', { role: 'owner' }).firestore()
     await assertSucceeds(
-      setDoc(doc(owner, 'prices/battery__iphone-13__none'), {
+      setDoc(doc(owner, 'r31_prices/battery__iphone-13__none'), {
         amount: 1,
         serviceId: 'battery',
         modelId: 'iphone-13',
@@ -90,12 +90,12 @@ describe('catalog rules', () => {
 
   it('faqs are public-read, owner-write', async () => {
     const anon = env.unauthenticatedContext().firestore()
-    await assertSucceeds(getDoc(doc(anon, 'faqs/faq-1')))
-    await assertFails(setDoc(doc(anon, 'faqs/faq-1'), { question: 'x' }))
+    await assertSucceeds(getDoc(doc(anon, 'r31_faqs/faq-1')))
+    await assertFails(setDoc(doc(anon, 'r31_faqs/faq-1'), { question: 'x' }))
 
     const owner = env.authenticatedContext('o1', { role: 'owner' }).firestore()
     await assertSucceeds(
-      setDoc(doc(owner, 'faqs/faq-1'), {
+      setDoc(doc(owner, 'r31_faqs/faq-1'), {
         question: 'q',
         answer: 'a',
         category: 'general',

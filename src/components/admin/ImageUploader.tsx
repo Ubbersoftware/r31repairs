@@ -35,7 +35,7 @@ export function ImageUploader({
     setErr('')
 
     try {
-      const storageRef = ref(storage, `service-images/${serviceId}`)
+      const storageRef = ref(storage, `r31/service-images/${serviceId}`)
       const snap = await uploadBytes(storageRef, file)
       const downloadURL = await getDownloadURL(snap.ref)
 
