@@ -40,27 +40,15 @@ describe('admin', () => {
 })
 
 describe('getAdminApp() emulator production guard', () => {
-  const originalNodeEnv = process.env.NODE_ENV
-  const originalEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST
-
   afterEach(() => {
     // Restore env vars so other tests are unaffected.
-    if (originalNodeEnv === undefined) {
-      delete process.env.NODE_ENV
-    } else {
-      process.env.NODE_ENV = originalNodeEnv
-    }
-    if (originalEmulatorHost === undefined) {
-      delete process.env.FIRESTORE_EMULATOR_HOST
-    } else {
-      process.env.FIRESTORE_EMULATOR_HOST = originalEmulatorHost
-    }
+    vi.unstubAllEnvs()
     vi.resetModules()
   })
 
   it('throws when FIRESTORE_EMULATOR_HOST is set in production', async () => {
-    process.env.NODE_ENV = 'production'
-    process.env.FIRESTORE_EMULATOR_HOST = 'localhost:8080'
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('FIRESTORE_EMULATOR_HOST', 'localhost:8080')
     // Re-register mocks with a fresh apps array so the singleton hasn't been
     // initialised yet, ensuring getAdminApp() reaches the emulator branch.
     vi.resetModules()
