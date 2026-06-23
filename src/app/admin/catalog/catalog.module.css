@@ -1,0 +1,18 @@
+.services {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-7);
+}
+
+.heading {
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .services {
+    grid-template-columns: 1fr;
+  }
+}
