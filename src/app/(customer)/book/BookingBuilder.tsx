@@ -203,8 +203,15 @@ export function BookingBuilder({ services, models, matrix }: Props) {
   }
 
   // Build phase
+  function isRowComplete(row: ServiceRow): boolean {
+    if (!row.serviceId) return false
+    const svc = services.find(s => s.id === row.serviceId)
+    if (svc?.hasVariants && svc.variants.length > 0) return row.variant !== null
+    return true
+  }
+
   const canReview = devices.length > 0 && devices.every(
-    d => d.phoneModelId && d.items.length > 0 && d.items.every(it => it.serviceId),
+    d => d.phoneModelId && d.items.length > 0 && d.items.every(isRowComplete),
   )
 
   return (
@@ -320,11 +327,11 @@ export function BookingBuilder({ services, models, matrix }: Props) {
                               htmlFor={`variant-${row.itemId}`}
                               className={styles.fieldLabel}
                             >
-                              Variant
+                              Variant <span className={styles.variantRequired}>(required)</span>
                             </label>
                             <select
                               id={`variant-${row.itemId}`}
-                              className={styles.select}
+                              className={`${styles.select}${row.variant === null ? ` ${styles.selectRequired}` : ''}`}
                               value={row.variant ?? ''}
                               onChange={e =>
                                 updateServiceRow(device.deviceId, row.itemId, {
@@ -332,8 +339,9 @@ export function BookingBuilder({ services, models, matrix }: Props) {
                                 })
                               }
                               aria-label="Variant"
+                              aria-required="true"
                             >
-                              <option value="">Select variant…</option>
+                              <option value="">Select option…</option>
                               {selectedSvc.variants.map(v => (
                                 <option key={v} value={v}>{v}</option>
                               ))}
@@ -367,7 +375,7 @@ export function BookingBuilder({ services, models, matrix }: Props) {
               type="button"
               className={styles.btnAddService}
               onClick={() => addServiceRow(device.deviceId)}
-              disabled={!model}
+              disabled={!device.phoneModelId}
             >
               + Add service
             </button>

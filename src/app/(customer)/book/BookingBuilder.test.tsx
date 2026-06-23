@@ -29,12 +29,26 @@ const services: Service[] = [
     category: 'power',
     description: '',
   },
+  {
+    id: 'screen',
+    name: 'Screen Repair',
+    slug: 'screen',
+    hasVariants: true,
+    variants: ['Basic', 'OLED'],
+    active: true,
+    sortOrder: 2,
+    imageURL: null,
+    category: 'screen',
+    description: '',
+  },
 ]
 const models: PhoneModel[] = [
   { id: 'iphone-13', name: 'iPhone 13', brand: 'Apple', active: true, sortOrder: 1 },
 ]
 const matrix: PriceDoc[] = [
   { serviceId: 'battery', modelId: 'iphone-13', variant: null, amount: 60000, available: true },
+  { serviceId: 'screen', modelId: 'iphone-13', variant: 'Basic', amount: 120000, available: true },
+  { serviceId: 'screen', modelId: 'iphone-13', variant: 'OLED', amount: 200000, available: true },
 ]
 
 beforeEach(() => {
@@ -104,5 +118,33 @@ describe('BookingBuilder', () => {
 
     const alert = await screen.findByRole('alert')
     expect(alert).toBeInTheDocument()
+  })
+
+  it('blocks Review when a variant-requiring service has no variant selected, unblocks after selection', () => {
+    render(<BookingBuilder services={services} models={models} matrix={matrix} />)
+
+    // Add device and select model
+    fireEvent.click(screen.getByRole('button', { name: /add device/i }))
+    const modelSelect = screen.getByRole('combobox', { name: /phone model/i })
+    fireEvent.change(modelSelect, { target: { value: 'iphone-13' } })
+
+    // Add service row and select the variant-requiring "screen" service
+    fireEvent.click(screen.getByRole('button', { name: /add service/i }))
+    const serviceSelect = screen.getByRole('combobox', { name: /service/i })
+    fireEvent.change(serviceSelect, { target: { value: 'screen' } })
+
+    // Review button should NOT be present (canReview is false)
+    expect(screen.queryByRole('button', { name: /review/i })).toBeNull()
+
+    // Variant select should be visible and show "Select option…" (required state)
+    const variantSelect = screen.getByRole('combobox', { name: /variant/i })
+    expect(variantSelect).toBeInTheDocument()
+    expect((variantSelect as HTMLSelectElement).value).toBe('')
+
+    // Select a variant
+    fireEvent.change(variantSelect, { target: { value: 'Basic' } })
+
+    // Now Review button should appear
+    expect(screen.getByRole('button', { name: /review/i })).toBeInTheDocument()
   })
 })

@@ -60,6 +60,15 @@
   color: var(--text-faint);
 }
 
+.variantRequired {
+  font-size: var(--fs-xs);
+  color: var(--warning, var(--danger));
+}
+
+.selectRequired {
+  border-color: var(--warning, var(--danger));
+}
+
 .select,
 .input,
 .textarea {
