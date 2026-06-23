@@ -54,10 +54,11 @@ export async function saveServiceAction(
 export async function setServiceImageAction(
   idToken: string, input: { id: string; imageURL: string },
 ): Promise<ActionResult> {
-  try { await verifyOwner(idToken) } catch (e) { return fail(e) }
+  let uid: string
+  try { uid = (await verifyOwner(idToken)).uid } catch (e) { return fail(e) }
   const parsed = serviceImageSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'INVALID' }
-  await getAdminDb().collection('services').doc(parsed.data.id).set({ imageURL: parsed.data.imageURL }, { merge: true })
+  await getAdminDb().collection('services').doc(parsed.data.id).set({ imageURL: parsed.data.imageURL, updatedAt: Date.now(), updatedBy: uid }, { merge: true })
   revalidateCatalog()
   return { ok: true }
 }

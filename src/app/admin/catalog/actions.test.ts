@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const writes: Record<string, unknown>[] = []
-const revalidated: string[] = []
+// Each entry is [path, type?] — captures both args so slug revalidation can be asserted
+const revalidated: [string, string?][] = []
 
-vi.mock('next/cache', () => ({ revalidatePath: (p: string) => { revalidated.push(p) } }))
+vi.mock('next/cache', () => ({ revalidatePath: (p: string, type?: string) => { revalidated.push([p, type]) } }))
 vi.mock('@/lib/firebase/admin', () => ({
   verifyOwner: async (t: string) => { if (t !== 'owner') throw new Error(t === 'cust' ? 'FORBIDDEN' : 'UNAUTHENTICATED'); return { uid: 'o1' } },
   getAdminDb: () => ({
@@ -11,7 +12,7 @@ vi.mock('@/lib/firebase/admin', () => ({
       set: (_ref: unknown, data: Record<string, unknown>) => { writes.push(data) },
       commit: async () => {},
     }),
-    collection: () => ({ doc: () => ({ id: 'x' }) }),
+    collection: () => ({ doc: () => ({ id: 'x', set: async (_data: unknown, _opts: unknown) => {} }) }),
   }),
 }))
 
@@ -32,6 +33,26 @@ describe('savePricesAction', () => {
     const r = await savePricesAction('owner', [{ serviceId: 'battery', modelId: 'iphone-13', variant: null, amount: 80000, available: true }])
     expect(r).toEqual({ ok: true })
     expect(writes.length).toBe(1)
-    expect(revalidated).toContain('/services')
+    // existing: /services path was revalidated
+    expect(revalidated.map(([p]) => p)).toContain('/services')
+    // slug page revalidation must also fire
+    expect(revalidated).toContainEqual(['/services/[slug]', 'page'])
+  })
+})
+
+describe('setServiceImageAction', () => {
+  it('rejects a non-owner', async () => {
+    const { setServiceImageAction } = await import('./actions')
+    expect(await setServiceImageAction('cust', { id: 'battery', imageURL: 'https://example.com/img.jpg' }))
+      .toEqual({ ok: false, error: 'FORBIDDEN' })
+  })
+  it('writes imageURL with audit fields and revalidates the public catalog', async () => {
+    const { setServiceImageAction } = await import('./actions')
+    const r = await setServiceImageAction('owner', { id: 'battery', imageURL: 'https://example.com/img.jpg' })
+    expect(r).toEqual({ ok: true })
+    // /services path was revalidated
+    expect(revalidated.map(([p]) => p)).toContain('/services')
+    // slug page revalidation must also fire
+    expect(revalidated).toContainEqual(['/services/[slug]', 'page'])
   })
 })
