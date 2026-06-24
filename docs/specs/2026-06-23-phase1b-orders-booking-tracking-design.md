@@ -172,3 +172,7 @@ Server-authoritative; mirror the 1a pattern (`verifyOwner` / `ActionResult` from
 ## 9. Out-of-scope recap (so the plan doesn't drift)
 
 Phase 2: payment, invoicing, e-signature, *Completed*, warranty. Phase 1c: in-app notifications + FCM push. Fast-follow: kanban board, `/admin` overview dashboard. Not in 1b: admin-created orders, customer approve/decline, customer-cancel, per-line status UI.
+
+**Implementation de-scope (recorded during the final whole-branch review):** `editLineAction`/the admin UI support editing an existing line's price (the extra-damage repricing path), but **not adding or removing order lines** — the design text in §4 mentioned add/remove, but 1b ships edit-only. Adding/removing a line is a fast-follow (it pairs naturally with invoicing in Phase 2). This is a deliberate, internally-consistent reduction, not a regression.
+
+**Security note (controller correction during execution):** the admin order pages (`/admin/orders`, `/admin/orders/[id]`) read CLIENT-side via the Firebase SDK (owner `role:'owner'` claim + rules permit owner-reads-all), NOT server-side via the Admin SDK — because orders are private and `/admin` is gated only by a client `RequireOwner` guard, so a server read would ship all order PII in the initial payload before the guard runs. The server query layer (`getOrdersForAdmin`/`getOrder`/`getOrderEvents`) is retained for a future session-authenticated/kanban path.
