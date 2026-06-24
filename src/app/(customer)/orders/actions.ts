@@ -19,13 +19,15 @@ export async function createOrderAction(
   }
 
   const parsed = bookingSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'INVALID', message: 'bad booking' }
+  if (!parsed.success) return { ok: false, error: 'INVALID', message: 'bad booking: ' + JSON.stringify(parsed.error.flatten()) }
 
-  const [matrix, services, models] = await Promise.all([
-    getPriceMatrix(),
-    getActiveServices(),
-    getActiveModels(),
-  ])
+  let catalogResult: [Awaited<ReturnType<typeof getPriceMatrix>>, Awaited<ReturnType<typeof getActiveServices>>, Awaited<ReturnType<typeof getActiveModels>>]
+  try {
+    catalogResult = await Promise.all([getPriceMatrix(), getActiveServices(), getActiveModels()])
+  } catch (e) {
+    return fail(new Error('catalog failed: ' + String(e)))
+  }
+  const [matrix, services, models] = catalogResult
   const svc = new Map(services.map((s) => [s.id, s]))
   const mdl = new Map(models.map((m) => [m.id, m]))
 
@@ -64,31 +66,40 @@ export async function createOrderAction(
     }
   }
 
-  const orderNumber = await nextOrderNumber(db)
+  let orderNumber: string
+  try {
+    orderNumber = await nextOrderNumber(db)
+  } catch (e) {
+    return fail(new Error('counter failed: ' + String(e)))
+  }
   const now = Date.now()
 
-  await orderRef.set({
-    orderNumber,
-    customerId: user.uid,
-    customerName: (user as { name?: string }).name ?? '',
-    customerPhone: (user as { phone_number?: string }).phone_number ?? '',
-    status: 'placed',
-    paymentStatus: 'unpaid',
-    devices,
-    items,
-    estimatedTotal,
-    createdAt: now,
-    updatedAt: now,
-  })
+  try {
+    await orderRef.set({
+      orderNumber,
+      customerId: user.uid,
+      customerName: (user as { name?: string }).name ?? '',
+      customerPhone: (user as { phone_number?: string }).phone_number ?? '',
+      status: 'placed',
+      paymentStatus: 'unpaid',
+      devices,
+      items,
+      estimatedTotal,
+      createdAt: now,
+      updatedAt: now,
+    })
 
-  await orderRef.collection('events').doc().set({
-    type: 'created',
-    toStatus: 'placed',
-    visibility: 'customer',
-    byUserId: user.uid,
-    byRole: 'customer',
-    at: now,
-  })
+    await orderRef.collection('events').doc().set({
+      type: 'created',
+      toStatus: 'placed',
+      visibility: 'customer',
+      byUserId: user.uid,
+      byRole: 'customer',
+      at: now,
+    })
+  } catch (e) {
+    return fail(new Error('write failed: ' + String(e)))
+  }
 
   revalidatePath('/account')
   return { ok: true, orderId: orderRef.id }
