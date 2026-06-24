@@ -18,6 +18,7 @@ export async function createOrderAction(
     return fail(e)
   }
 
+  // BINARY SEARCH STEP 1: only run schema parse + catalog queries (no writes)
   try {
     const parsed = bookingSchema.safeParse(input)
     if (!parsed.success) {
@@ -29,75 +30,14 @@ export async function createOrderAction(
       getActiveServices(),
       getActiveModels(),
     ])
-    const svc = new Map(services.map((s) => [s.id, s]))
-    const mdl = new Map(models.map((m) => [m.id, m]))
 
-    const db = getAdminDb()
-    const orderRef = db.collection('r31_orders').doc()
-    const devices: Record<string, unknown>[] = []
-    const items: Record<string, unknown>[] = []
-    let estimatedTotal = 0
-
-    for (const d of parsed.data.devices) {
-      const model = mdl.get(d.phoneModelId)
-      if (!model) return { ok: false, error: 'INVALID', message: `unknown model ${d.phoneModelId}` }
-      devices.push({
-        deviceId: d.deviceId,
-        phoneModelId: d.phoneModelId,
-        modelName: model.name,
-        label: d.label ?? null,
-        notes: d.notes ?? null,
-      })
-      for (const it of d.items) {
-        const service = svc.get(it.serviceId)
-        if (!service) return { ok: false, error: 'INVALID', message: `unknown service ${it.serviceId}` }
-        const amount = priceFor(matrix, it.serviceId, d.phoneModelId, it.variant)
-        if (amount == null) {
-          return { ok: false, error: 'INVALID', message: `price unavailable: svc=${it.serviceId} mdl=${d.phoneModelId} v=${it.variant}` }
-        }
-        estimatedTotal += amount
-        items.push({
-          itemId: it.itemId,
-          deviceId: d.deviceId,
-          serviceId: it.serviceId,
-          serviceName: service.name,
-          variant: it.variant ?? null,
-          quotedAmount: amount,
-          lineStatus: 'placed',
-        })
-      }
+    return {
+      ok: false,
+      error: 'INVALID',
+      message: `STEP1_OK: user=${user.uid.slice(0,6)} svc_count=${services.length} mdl_count=${models.length} matrix_count=${matrix.length}`,
     }
-
-    const orderNumber = await nextOrderNumber(db)
-    const now = Date.now()
-
-    await orderRef.set({
-      orderNumber,
-      customerId: user.uid,
-      customerName: (user as { name?: string }).name ?? '',
-      customerPhone: (user as { phone_number?: string }).phone_number ?? '',
-      status: 'placed',
-      paymentStatus: 'unpaid',
-      devices,
-      items,
-      estimatedTotal,
-      createdAt: now,
-      updatedAt: now,
-    })
-
-    await orderRef.collection('events').doc().set({
-      type: 'created',
-      toStatus: 'placed',
-      visibility: 'customer',
-      byUserId: user.uid,
-      byRole: 'customer',
-      at: now,
-    })
-
-    revalidatePath('/account')
-    return { ok: true, orderId: orderRef.id }
   } catch (e) {
     const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
-    return { ok: false, error: 'INVALID', message: `server error: ${msg}` }
+    return { ok: false, error: 'INVALID', message: `STEP1_CATCH: ${msg}` }
   }
 }
