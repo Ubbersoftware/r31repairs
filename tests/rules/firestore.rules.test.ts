@@ -6,7 +6,7 @@ import {
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import { readFileSync } from 'node:fs'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 
 let env: RulesTestEnvironment
 
@@ -134,5 +134,28 @@ describe('catalog rules', () => {
         sortOrder: 1,
       }),
     )
+  })
+})
+
+describe('notifications rules', () => {
+  it('notifications: own read, read-flag-only update, no client create', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await setDoc(doc(admin.firestore(), 'r31_notifications/n1'), {
+        userId: 'c1',
+        type: 'status_change',
+        title: 'R31-0001',
+        body: 'Status: In Repair',
+        link: '/orders/o1',
+        read: false,
+        createdAt: 1,
+      })
+    })
+    const c1 = env.authenticatedContext('c1', { role: 'customer' }).firestore()
+    const c2 = env.authenticatedContext('c2', { role: 'customer' }).firestore()
+    await assertSucceeds(getDoc(doc(c1, 'r31_notifications/n1')))
+    await assertFails(getDoc(doc(c2, 'r31_notifications/n1')))                           // not your notification
+    await assertSucceeds(updateDoc(doc(c1, 'r31_notifications/n1'), { read: true }))     // mark read OK
+    await assertFails(updateDoc(doc(c1, 'r31_notifications/n1'), { title: 'hacked' }))   // only read may change
+    await assertFails(setDoc(doc(c1, 'r31_notifications/n2'), { userId: 'c1', read: false })) // client create denied
   })
 })

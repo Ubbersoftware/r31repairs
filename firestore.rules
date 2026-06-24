@@ -42,8 +42,11 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
-    match /r31_notifications/{id} {
-      allow read, update: if isSignedIn() && resource.data.userId == request.auth.uid;
+    match /r31_notifications/{notifId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow create, delete: if false;
     }
     match /r31_counters/{id} { allow read, write: if false; }
