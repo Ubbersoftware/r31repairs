@@ -21,6 +21,10 @@
   --warning: #FF9800;
   --info:    #2962FF;
 
+  /* ---------- Order status (extended) ---------- */
+  --status-blue:   #2A8AF0;
+  --status-purple: #7E57C2;
+
   /* ---------- Dark surfaces (default) ---------- */
   --bg:            #131722;
   --surface:       #1B2030;

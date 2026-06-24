@@ -1,0 +1,74 @@
+/* StatusTimeline — vertical connected-dots layout
+   Each entry has a colored dot connected to the next by a left-border line.
+   Token-driven; no hardcoded colors.
+*/
+
+.timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.entry {
+  display: flex;
+  gap: var(--space-4);
+  position: relative;
+  /* Minimum tap-friendly row height */
+  min-height: 44px;
+}
+
+/* Connecting vertical line — drawn on the last child's ::after so the last
+   dot has no line beneath it. */
+.entry:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  /* 8px = half the dot width (16px); left offset aligns with dot centre */
+  left: 7px;
+  top: 22px; /* dot center + a little space */
+  bottom: 0;
+  width: 2px;
+  background: var(--border-strong);
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: var(--space-1);
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--surface-2);
+  position: relative;
+  z-index: 1;
+}
+
+.content {
+  flex: 1;
+  padding-bottom: var(--space-5);
+}
+
+.entry:last-child .content {
+  padding-bottom: 0;
+}
+
+.label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-strong);
+  /* override global p max-width */
+  max-width: none;
+}
+
+.note {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-top: var(--space-1);
+  max-width: none;
+}
+
+.time {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  margin-top: var(--space-1);
+}

@@ -6,7 +6,7 @@ import {
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
 import { readFileSync } from 'node:fs'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 
 let env: RulesTestEnvironment
 
@@ -65,6 +65,37 @@ describe('firestore rules', () => {
   })
 })
 
+describe('orders + events rules', () => {
+  it('orders: customer reads only their own; owner reads all; client cannot write', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await setDoc(doc(admin.firestore(), 'r31_orders/o1'), { customerId: 'c1', status: 'placed' })
+      await setDoc(
+        doc(admin.firestore(), 'r31_orders/o1/events/e1'),
+        { visibility: 'customer', type: 'created' },
+      )
+      await setDoc(
+        doc(admin.firestore(), 'r31_orders/o1/events/e2'),
+        { visibility: 'internal', type: 'note' },
+      )
+    })
+    const c1 = env.authenticatedContext('c1', { role: 'customer' }).firestore()
+    const c2 = env.authenticatedContext('c2', { role: 'customer' }).firestore()
+    const owner = env.authenticatedContext('o1', { role: 'owner' }).firestore()
+    // customer reads own order
+    await assertSucceeds(getDoc(doc(c1, 'r31_orders/o1')))
+    // another customer is denied
+    await assertFails(getDoc(doc(c2, 'r31_orders/o1')))
+    // owner reads all
+    await assertSucceeds(getDoc(doc(owner, 'r31_orders/o1')))
+    // client write denied
+    await assertFails(setDoc(doc(c1, 'r31_orders/o1'), { status: 'ready' }))
+    // customer reads customer-visible event
+    await assertSucceeds(getDoc(doc(c1, 'r31_orders/o1/events/e1')))
+    // internal event is owner-only — denied to customer
+    await assertFails(getDoc(doc(c1, 'r31_orders/o1/events/e2')))
+  })
+})
+
 describe('catalog rules', () => {
   it('anyone can read services, nobody-but-owner can write', async () => {
     const anon = env.unauthenticatedContext().firestore()
@@ -103,5 +134,37 @@ describe('catalog rules', () => {
         sortOrder: 1,
       }),
     )
+  })
+})
+
+describe('notifications rules', () => {
+  it('notifications: own read, read-flag-only update, no client create', async () => {
+    await env.withSecurityRulesDisabled(async (admin) => {
+      await setDoc(doc(admin.firestore(), 'r31_notifications/n1'), {
+        userId: 'c1',
+        type: 'status_change',
+        title: 'R31-0001',
+        body: 'Status: In Repair',
+        link: '/orders/o1',
+        read: false,
+        createdAt: 1,
+      })
+      await setDoc(doc(admin.firestore(), 'r31_notifications/n1b'), {
+        userId: 'c1',
+        type: 'status_change',
+        title: 'R31-0002',
+        body: 'Status: In Repair',
+        link: '/orders/o1',
+        read: false,
+        createdAt: 1,
+      })
+    })
+    const c1 = env.authenticatedContext('c1', { role: 'customer' }).firestore()
+    const c2 = env.authenticatedContext('c2', { role: 'customer' }).firestore()
+    await assertSucceeds(getDoc(doc(c1, 'r31_notifications/n1')))
+    await assertFails(getDoc(doc(c2, 'r31_notifications/n1')))                           // not your notification
+    await assertSucceeds(updateDoc(doc(c1, 'r31_notifications/n1'), { read: true }))     // mark read OK
+    await assertFails(updateDoc(doc(c1, 'r31_notifications/n1b'), { title: 'hacked' }))  // only read may change (fresh doc)
+    await assertFails(setDoc(doc(c1, 'r31_notifications/n2'), { userId: 'c1', read: false })) // client create denied
   })
 })

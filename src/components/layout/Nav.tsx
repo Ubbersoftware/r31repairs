@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/services', label: 'Services' },
   { href: '/#how', label: 'How it works' },
   { href: '/faq', label: 'FAQ' },
+  { href: '/account', label: 'My account' },
 ]
 
 export function Nav() {

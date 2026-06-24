@@ -17,14 +17,15 @@ service cloud.firestore {
     match /r31_faqs/{id}        { allow read: if true; allow write: if isOwner(); }
     match /r31_settings/{id}    { allow read: if true; allow write: if isOwner(); }
 
-    match /r31_orders/{id} {
-      allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;
-      allow update, delete: if isOwner();
+    match /r31_orders/{orderId} {
+      allow read: if isOwner() || (request.auth != null && request.auth.uid == resource.data.customerId);
+      allow write: if false; // all writes via Admin SDK server actions
       match /events/{eventId} {
-        allow read: if isOwner() || (isSignedIn() && get(/databases/$(database)/documents/r31_orders/$(id)).data.customerId == request.auth.uid);
-        allow create: if isOwner();
-        allow update, delete: if false;
+        allow read: if isOwner()
+          || (resource.data.visibility == 'customer'
+              && request.auth != null
+              && get(/databases/$(database)/documents/r31_orders/$(orderId)).data.customerId == request.auth.uid);
+        allow write: if false;
       }
     }
     match /r31_invoices/{id} {
@@ -41,8 +42,11 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
-    match /r31_notifications/{id} {
-      allow read, update: if isSignedIn() && resource.data.userId == request.auth.uid;
+    match /r31_notifications/{notifId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow create, delete: if false;
     }
     match /r31_counters/{id} { allow read, write: if false; }

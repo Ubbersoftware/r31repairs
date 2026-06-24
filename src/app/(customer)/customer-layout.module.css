@@ -25,8 +25,30 @@
 .brand span {
   color: var(--text-strong);
 }
+.navLinks {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.navLinks a {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.navLinks a:hover {
+  color: var(--text-strong);
+}
+
 .actions {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+@media (max-width: 639px) {
+  .navLinks {
+    display: none;
+  }
 }

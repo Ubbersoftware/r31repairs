@@ -37,11 +37,18 @@ export async function seedCatalog(
 }
 
 // CLI entry: `npm run seed:catalog` (add `-- --force` to overwrite).
+// Builds the Admin SDK Firestore directly rather than importing `@/lib/firebase/admin`,
+// which carries an `import 'server-only'` guard that throws outside a React Server
+// Component (i.e. under plain `tsx`/Node, as this script runs).
 if (process.argv[1] && process.argv[1].endsWith('seedCatalog.ts')) {
   const run = async () => {
-    const { getAdminDb } = await import('../lib/firebase/admin')
+    const { initializeApp, cert, getApps } = await import('firebase-admin/app')
+    const { getFirestore } = await import('firebase-admin/firestore')
+    const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT ?? '{}')
+    if (!sa.project_id) throw new Error('FIREBASE_SERVICE_ACCOUNT is missing or invalid (set it to the service-account JSON)')
+    const app = getApps().length ? getApps()[0] : initializeApp({ credential: cert(sa) })
     const force = process.argv.includes('--force')
-    const r = await seedCatalog(getAdminDb(), { force })
+    const r = await seedCatalog(getFirestore(app), { force })
     console.log(`Seed complete: created ${r.created}, skipped ${r.skipped}${force ? ' (force)' : ''}`)
   }
   run().catch((e) => { console.error(e); process.exit(1) })
