@@ -1,6 +1,7 @@
 // src/components/notifications/NotificationBell.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { act } from 'react'
 
 const updateSpy = vi.fn(async () => {})
 const push = vi.fn()
@@ -29,14 +30,14 @@ beforeEach(() => { updateSpy.mockClear(); push.mockClear() })
 describe('NotificationBell', () => {
   it('shows the unread count and lists notifications newest-first', () => {
     render(<NotificationBell />)
-    emit(items)
+    act(() => emit(items))
     expect(screen.getByLabelText(/1 unread/i)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
     expect(screen.getByText('Status: Ready for Collection')).toBeInTheDocument()
   })
   it('marks an item read and navigates on click', async () => {
     render(<NotificationBell />)
-    emit(items)
+    act(() => emit(items))
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
     fireEvent.click(screen.getByText('Status: Ready for Collection'))
     expect(updateSpy).toHaveBeenCalled()

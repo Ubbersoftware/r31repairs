@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import {
   collection,
@@ -39,9 +38,7 @@ export function NotificationBell() {
       )
       // Sort newest first, cap at 20
       docs.sort((a, b) => b.createdAt - a.createdAt)
-      // flushSync ensures realtime updates are visible to tests and to users
-      // without waiting for the next batch flush
-      flushSync(() => setItems(docs.slice(0, 20)))
+      setItems(docs.slice(0, 20))
     })
 
     return () => unsub()
