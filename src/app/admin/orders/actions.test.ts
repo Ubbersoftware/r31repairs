@@ -26,10 +26,8 @@ vi.mock('@/lib/firebase/admin', () => ({
   }),
 }))
 beforeEach(() => {
-  order.status = 'placed'
-  order.customerId = 'c1'
-  order.orderNumber = 'R31-0042'
-  order.items = [{ itemId: 'i1', quotedAmount: 80000 }]
+  Object.keys(order).forEach(k => delete order[k])
+  Object.assign(order, { status: 'placed', customerId: 'c1', orderNumber: 'R31-0042', items: [{ itemId: 'i1', quotedAmount: 80000 }] })
   allWrites.length = 0
   revalidated.length = 0
 })
