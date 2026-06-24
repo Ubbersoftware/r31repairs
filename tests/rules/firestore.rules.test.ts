@@ -149,13 +149,22 @@ describe('notifications rules', () => {
         read: false,
         createdAt: 1,
       })
+      await setDoc(doc(admin.firestore(), 'r31_notifications/n1b'), {
+        userId: 'c1',
+        type: 'status_change',
+        title: 'R31-0002',
+        body: 'Status: In Repair',
+        link: '/orders/o1',
+        read: false,
+        createdAt: 1,
+      })
     })
     const c1 = env.authenticatedContext('c1', { role: 'customer' }).firestore()
     const c2 = env.authenticatedContext('c2', { role: 'customer' }).firestore()
     await assertSucceeds(getDoc(doc(c1, 'r31_notifications/n1')))
     await assertFails(getDoc(doc(c2, 'r31_notifications/n1')))                           // not your notification
     await assertSucceeds(updateDoc(doc(c1, 'r31_notifications/n1'), { read: true }))     // mark read OK
-    await assertFails(updateDoc(doc(c1, 'r31_notifications/n1'), { title: 'hacked' }))   // only read may change
+    await assertFails(updateDoc(doc(c1, 'r31_notifications/n1b'), { title: 'hacked' }))  // only read may change (fresh doc)
     await assertFails(setDoc(doc(c1, 'r31_notifications/n2'), { userId: 'c1', read: false })) // client create denied
   })
 })
