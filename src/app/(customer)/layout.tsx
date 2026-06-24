@@ -23,6 +23,10 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             <Link className={styles.brand} href="/">
               31<span>Repairs</span>
             </Link>
+            <nav className={styles.navLinks}>
+              <Link href="/account">My account</Link>
+              <Link href="/book">Book a repair</Link>
+            </nav>
             <div className={styles.actions}>
               <ThemeToggle />
               <Button variant="ghost" onClick={onSignOut}>Sign out</Button>
