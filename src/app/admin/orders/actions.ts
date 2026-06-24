@@ -5,6 +5,7 @@ import { verifyOwner, getAdminDb } from '@/lib/firebase/admin'
 import { statusChangeSchema, lineEditSchema, noteSchema } from '@/lib/orders/validation'
 import { fail, type ActionResult } from '@/lib/catalog/actionResult'
 import type { OrderStatus } from '@/lib/types/order'
+import { buildStatusNotification, buildPriceNotification } from '@/lib/notifications/buildNotification'
 
 function revalidateOrder(orderId: string) {
   revalidatePath('/admin/orders')
@@ -22,10 +23,12 @@ async function applyStatus(
   const db = getAdminDb()
   const ref = db.collection('r31_orders').doc(orderId)
   const eventRef = ref.collection('events').doc()
+  const notifRef = db.collection('r31_notifications').doc()
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref)
     if (!snap.exists) throw new Error('INVALID')
-    const fromStatus = snap.data()!.status as OrderStatus
+    const order = snap.data()!
+    const fromStatus = order.status as OrderStatus
     const now = Date.now()
     tx.update(ref, { status: toStatus, updatedAt: now })
     tx.set(eventRef, {
@@ -38,6 +41,13 @@ async function applyStatus(
       byRole: 'owner',
       at: now,
     })
+    tx.set(notifRef, buildStatusNotification({
+      userId: order.customerId as string,
+      orderId,
+      orderNumber: order.orderNumber as string,
+      toStatus,
+      now,
+    }))
   })
   revalidateOrder(orderId)
   return { ok: true }
@@ -98,11 +108,13 @@ export async function editLineAction(
   const db = getAdminDb()
   const ref = db.collection('r31_orders').doc(orderId)
   const eventRef = ref.collection('events').doc()
+  const notifRef = db.collection('r31_notifications').doc()
   try {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref)
       if (!snap.exists) throw new Error('INVALID')
-      const items = (snap.data()!.items as { itemId: string; quotedAmount: number; finalAmount?: number }[]) ?? []
+      const order = snap.data()!
+      const items = (order.items as { itemId: string; quotedAmount: number; finalAmount?: number }[]) ?? []
       const next = items.map((it) =>
         it.itemId === parsed.data.itemId ? { ...it, finalAmount: parsed.data.finalAmount } : it,
       )
@@ -117,6 +129,12 @@ export async function editLineAction(
         byRole: 'owner',
         at: now,
       })
+      tx.set(notifRef, buildPriceNotification({
+        userId: order.customerId as string,
+        orderId,
+        orderNumber: order.orderNumber as string,
+        now,
+      }))
     })
   } catch (e) {
     return fail(e)

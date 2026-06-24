@@ -1,7 +1,12 @@
 // src/app/admin/orders/actions.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-const order: Record<string, unknown> = { status: 'placed', items: [{ itemId: 'i1', quotedAmount: 80000 }] }
-const events: Record<string, unknown>[] = []
+const order: Record<string, unknown> = {
+  status: 'placed',
+  customerId: 'c1',
+  orderNumber: 'R31-0042',
+  items: [{ itemId: 'i1', quotedAmount: 80000 }],
+}
+const allWrites: Record<string, unknown>[] = []
 const revalidated: string[] = []
 vi.mock('next/cache', () => ({ revalidatePath: (p: string) => revalidated.push(p) }))
 vi.mock('@/lib/firebase/admin', () => ({
@@ -10,22 +15,28 @@ vi.mock('@/lib/firebase/admin', () => ({
     runTransaction: async (fn: (tx: unknown) => Promise<unknown>) => fn({
       get: async () => ({ exists: true, data: () => order }),
       update: (_ref: unknown, d: Record<string, unknown>) => { Object.assign(order, d) },
-      set: (_ref: unknown, d: Record<string, unknown>) => { events.push(d) },
+      set: (_ref: unknown, d: Record<string, unknown>) => { allWrites.push(d) },
     }),
     collection: () => ({
       doc: () => ({
-        collection: () => ({ doc: () => ({ set: (_d: Record<string, unknown>) => { events.push(_d) } }) }),
-        set: (_d: Record<string, unknown>) => { events.push(_d) },
+        collection: () => ({ doc: () => ({ set: (_d: Record<string, unknown>) => { allWrites.push(_d) } }) }),
+        set: (_d: Record<string, unknown>) => { allWrites.push(_d) },
       }),
     }),
   }),
 }))
 beforeEach(() => {
   order.status = 'placed'
+  order.customerId = 'c1'
+  order.orderNumber = 'R31-0042'
   order.items = [{ itemId: 'i1', quotedAmount: 80000 }]
-  events.length = 0
+  allWrites.length = 0
   revalidated.length = 0
 })
+
+// helpers to filter writes by shape
+const getEvents = () => allWrites.filter((w) => !('link' in w))
+const getNotifs = () => allWrites.filter((w) => 'link' in w)
 
 describe('changeOrderStatusAction', () => {
   it('rejects a non-owner', async () => {
@@ -37,8 +48,14 @@ describe('changeOrderStatusAction', () => {
     const r = await changeOrderStatusAction('owner', 'o1', 'received', 'took it in')
     expect(r).toEqual({ ok: true })
     expect(order.status).toBe('received')
-    expect(events[0]).toMatchObject({ type: 'status_change', fromStatus: 'placed', toStatus: 'received', byRole: 'owner', visibility: 'customer' })
+    expect(getEvents()[0]).toMatchObject({ type: 'status_change', fromStatus: 'placed', toStatus: 'received', byRole: 'owner', visibility: 'customer' })
     expect(revalidated).toContain('/admin/orders')
+  })
+  it('writes a status_change notification to the customer', async () => {
+    const { changeOrderStatusAction } = await import('./actions')
+    await changeOrderStatusAction('owner', 'o1', 'received', undefined)
+    const notif = getNotifs()[0]
+    expect(notif).toMatchObject({ userId: 'c1', type: 'status_change', link: '/orders/o1', read: false })
   })
 })
 
@@ -52,8 +69,13 @@ describe('editLineAction', () => {
     const r = await editLineAction('owner', 'o1', { itemId: 'i1', finalAmount: 90000 })
     expect(r).toEqual({ ok: true })
     expect(order.finalTotal).toBe(90000)
-    expect(events[0]).toMatchObject({ type: 'line_edit', visibility: 'customer', byRole: 'owner' })
+    expect(getEvents()[0]).toMatchObject({ type: 'line_edit', visibility: 'customer', byRole: 'owner' })
     expect(revalidated).toContain('/admin/orders')
+  })
+  it('writes a price_update notification to the customer', async () => {
+    const { editLineAction } = await import('./actions')
+    await editLineAction('owner', 'o1', { itemId: 'i1', finalAmount: 90000 })
+    expect(getNotifs().some((n) => n.type === 'price_update' && n.userId === 'c1')).toBe(true)
   })
 })
 
@@ -62,12 +84,12 @@ describe('addOrderNoteAction', () => {
     const { addOrderNoteAction } = await import('./actions')
     const r = await addOrderNoteAction('owner', 'o1', 'check camera', 'internal')
     expect(r).toEqual({ ok: true })
-    expect(events[0]).toMatchObject({ type: 'note', note: 'check camera', visibility: 'internal', byRole: 'owner' })
+    expect(allWrites[0]).toMatchObject({ type: 'note', note: 'check camera', visibility: 'internal', byRole: 'owner' })
   })
   it('appends a customer note when visibility=customer', async () => {
     const { addOrderNoteAction } = await import('./actions')
     const r = await addOrderNoteAction('owner', 'o1', 'ready for pickup', 'customer')
     expect(r).toEqual({ ok: true })
-    expect(events[0]).toMatchObject({ type: 'note', note: 'ready for pickup', visibility: 'customer', byRole: 'owner' })
+    expect(allWrites[0]).toMatchObject({ type: 'note', note: 'ready for pickup', visibility: 'customer', byRole: 'owner' })
   })
 })
