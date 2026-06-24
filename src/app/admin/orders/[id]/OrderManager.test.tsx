@@ -11,7 +11,9 @@ vi.mock('@/app/admin/orders/actions', () => ({
 vi.mock('@/lib/firebase/client', () => ({ auth: { currentUser: { getIdToken: async () => 'owner' } } }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 import { OrderManager } from './OrderManager'
-const order = { id: 'o1', orderNumber: 'R31-0001', customerName: 'Thabo', customerPhone: '7', status: 'placed', devices: [{ deviceId: 'd1', modelName: 'iPhone 13' }], items: [{ itemId: 'i1', deviceId: 'd1', serviceName: 'Screen', quotedAmount: 150000 }], estimatedTotal: 150000 } as never
+const baseOrder = { id: 'o1', orderNumber: 'R31-0001', customerName: 'Thabo', customerPhone: '7', devices: [{ deviceId: 'd1', modelName: 'iPhone 13' }], items: [{ itemId: 'i1', deviceId: 'd1', serviceName: 'Screen', quotedAmount: 150000 }], estimatedTotal: 150000 }
+const order = { ...baseOrder, status: 'placed' } as never
+const orderAwaitingParts = { ...baseOrder, status: 'awaiting_parts' } as never
 beforeEach(() => statusSpy.mockClear())
 
 describe('OrderManager', () => {
@@ -20,5 +22,12 @@ describe('OrderManager', () => {
     fireEvent.click(screen.getByRole('button', { name: /device received/i }))
     await screen.findByText(/updated|saved/i)
     expect(statusSpy).toHaveBeenCalledWith('owner', 'o1', 'received', undefined)
+  })
+
+  it('shows a primary action for awaiting_parts that targets in_repair', async () => {
+    render(<OrderManager order={orderAwaitingParts} events={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: /mark in repair/i }))
+    await screen.findByText(/updated|saved/i)
+    expect(statusSpy).toHaveBeenCalledWith('owner', 'o1', 'in_repair', undefined)
   })
 })

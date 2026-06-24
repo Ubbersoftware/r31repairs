@@ -18,6 +18,8 @@ const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   placed: 'received',
   received: 'diagnosing',
   diagnosing: 'in_repair',
+  awaiting_approval: 'in_repair',
+  awaiting_parts: 'in_repair',
   in_repair: 'ready',
 }
 
@@ -123,7 +125,6 @@ export function OrderManager({ order, events, onChanged }: Props) {
   const isCancelled = order.status === 'cancelled'
 
   /* group items by device */
-  const deviceMap = new Map(order.devices.map((d) => [d.deviceId, d]))
   const byDevice = order.devices.map((d) => ({
     device: d,
     items: order.items.filter((it) => it.deviceId === d.deviceId),
