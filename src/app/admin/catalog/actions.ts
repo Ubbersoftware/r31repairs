@@ -12,6 +12,7 @@ function revalidateCatalog() {
   revalidatePath('/')
   revalidatePath('/services')
   revalidatePath('/services/[slug]', 'page')
+  revalidatePath('/book')
 }
 
 export async function savePricesAction(idToken: string, edits: PriceEdit[]): Promise<ActionResult> {
