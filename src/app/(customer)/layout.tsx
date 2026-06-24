@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { RequireUser } from '@/components/auth/RequireUser'
 import { Button } from '@/components/ui/Button'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { logout } from '@/lib/firebase/auth'
 import styles from './customer-layout.module.css'
 
@@ -29,6 +30,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
             </nav>
             <div className={styles.actions}>
               <ThemeToggle />
+              <NotificationBell />
               <Button variant="ghost" onClick={onSignOut}>Sign out</Button>
             </div>
           </div>
