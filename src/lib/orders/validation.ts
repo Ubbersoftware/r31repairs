@@ -18,7 +18,7 @@ export const bookingDeviceSchema = z.object({
 export const bookingSchema = z.object({ devices: z.array(bookingDeviceSchema).min(1) })
 export type BookingInput = z.infer<typeof bookingSchema>
 
-const statusEnum = z.enum(ORDER_STATUSES as unknown as [string, ...string[]])
+const statusEnum = z.enum(ORDER_STATUSES)
 export const statusChangeSchema = z.object({ toStatus: statusEnum, note: z.string().max(1000).optional() })
 
 export const lineEditSchema = z.object({

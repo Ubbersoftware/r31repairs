@@ -58,7 +58,7 @@ export async function changeOrderStatusAction(
   const parsed = statusChangeSchema.safeParse({ toStatus, note })
   if (!parsed.success) return { ok: false, error: 'INVALID' }
   try {
-    return await applyStatus(uid, orderId, parsed.data.toStatus as OrderStatus, parsed.data.note)
+    return await applyStatus(uid, orderId, parsed.data.toStatus, parsed.data.note)
   } catch (e) {
     return fail(e)
   }
@@ -111,7 +111,7 @@ export async function editLineAction(
       tx.update(ref, { items: next, finalTotal, updatedAt: now })
       tx.set(eventRef, {
         type: 'line_edit',
-        note: parsed.data.note ?? `Price updated for ${parsed.data.itemId}`,
+        note: parsed.data.note ?? 'Price updated',
         visibility: 'customer',
         byUserId: uid,
         byRole: 'owner',
@@ -140,14 +140,18 @@ export async function addOrderNoteAction(
   const parsed = noteSchema.safeParse({ note })
   if (!parsed.success) return { ok: false, error: 'INVALID' }
   const ref = getAdminDb().collection('r31_orders').doc(orderId)
-  await ref.collection('events').doc().set({
-    type: 'note',
-    note: parsed.data.note,
-    visibility: visibility === 'customer' ? 'customer' : 'internal',
-    byUserId: uid,
-    byRole: 'owner',
-    at: Date.now(),
-  })
-  revalidateOrder(orderId)
+  try {
+    await ref.collection('events').doc().set({
+      type: 'note',
+      note: parsed.data.note,
+      visibility: visibility === 'customer' ? 'customer' : 'internal',
+      byUserId: uid,
+      byRole: 'owner',
+      at: Date.now(),
+    })
+    revalidateOrder(orderId)
+  } catch (e) {
+    return fail(e)
+  }
   return { ok: true }
 }

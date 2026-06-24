@@ -7,7 +7,7 @@ export function StatusPill({ status }: { status: OrderStatus }) {
   return (
     <span
       className={`${styles.pill} ${meta.hold ? styles.hold : ''}`}
-      data-hold={meta.hold}
+      data-hold={meta.hold || undefined}
       style={{ '--pill': `var(${meta.token})` } as React.CSSProperties}
     >
       {meta.hold && <span aria-hidden="true" className={styles.pause}>⏸</span>}
