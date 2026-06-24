@@ -18,63 +18,55 @@ export async function createOrderAction(
     return fail(e)
   }
 
-  const parsed = bookingSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'INVALID', message: 'bad booking: ' + JSON.stringify(parsed.error.flatten()) }
-
-  let catalogResult: [Awaited<ReturnType<typeof getPriceMatrix>>, Awaited<ReturnType<typeof getActiveServices>>, Awaited<ReturnType<typeof getActiveModels>>]
   try {
-    catalogResult = await Promise.all([getPriceMatrix(), getActiveServices(), getActiveModels()])
-  } catch (e) {
-    return fail(new Error('catalog failed: ' + String(e)))
-  }
-  const [matrix, services, models] = catalogResult
-  const svc = new Map(services.map((s) => [s.id, s]))
-  const mdl = new Map(models.map((m) => [m.id, m]))
+    const parsed = bookingSchema.safeParse(input)
+    if (!parsed.success) return { ok: false, error: 'INVALID', message: 'schema: ' + JSON.stringify(parsed.error.flatten()) }
 
-  const db = getAdminDb()
-  const orderRef = db.collection('r31_orders').doc()
-  const devices: Record<string, unknown>[] = []
-  const items: Record<string, unknown>[] = []
-  let estimatedTotal = 0
+    const [matrix, services, models] = await Promise.all([
+      getPriceMatrix(),
+      getActiveServices(),
+      getActiveModels(),
+    ])
+    const svc = new Map(services.map((s) => [s.id, s]))
+    const mdl = new Map(models.map((m) => [m.id, m]))
 
-  for (const d of parsed.data.devices) {
-    const model = mdl.get(d.phoneModelId)
-    if (!model) return { ok: false, error: 'INVALID', message: `unknown model ${d.phoneModelId}` }
-    devices.push({
-      deviceId: d.deviceId,
-      phoneModelId: d.phoneModelId,
-      modelName: model.name,
-      label: d.label ?? null,
-      notes: d.notes ?? null,
-    })
-    for (const it of d.items) {
-      const service = svc.get(it.serviceId)
-      if (!service) return { ok: false, error: 'INVALID', message: `unknown service ${it.serviceId}` }
-      // Recompute price server-side from live matrix — never trust any client-sent price
-      const amount = priceFor(matrix, it.serviceId, d.phoneModelId, it.variant)
-      if (amount == null) return { ok: false, error: 'INVALID', message: 'price unavailable' }
-      estimatedTotal += amount
-      items.push({
-        itemId: it.itemId,
+    const db = getAdminDb()
+    const orderRef = db.collection('r31_orders').doc()
+    const devices: Record<string, unknown>[] = []
+    const items: Record<string, unknown>[] = []
+    let estimatedTotal = 0
+
+    for (const d of parsed.data.devices) {
+      const model = mdl.get(d.phoneModelId)
+      if (!model) return { ok: false, error: 'INVALID', message: `unknown model ${d.phoneModelId}` }
+      devices.push({
         deviceId: d.deviceId,
-        serviceId: it.serviceId,
-        serviceName: service.name,
-        variant: it.variant ?? null,
-        quotedAmount: amount,
-        lineStatus: 'placed',
+        phoneModelId: d.phoneModelId,
+        modelName: model.name,
+        label: d.label ?? null,
+        notes: d.notes ?? null,
       })
+      for (const it of d.items) {
+        const service = svc.get(it.serviceId)
+        if (!service) return { ok: false, error: 'INVALID', message: `unknown service ${it.serviceId}` }
+        const amount = priceFor(matrix, it.serviceId, d.phoneModelId, it.variant)
+        if (amount == null) return { ok: false, error: 'INVALID', message: `price unavailable: svc=${it.serviceId} mdl=${d.phoneModelId} v=${it.variant}` }
+        estimatedTotal += amount
+        items.push({
+          itemId: it.itemId,
+          deviceId: d.deviceId,
+          serviceId: it.serviceId,
+          serviceName: service.name,
+          variant: it.variant ?? null,
+          quotedAmount: amount,
+          lineStatus: 'placed',
+        })
+      }
     }
-  }
 
-  let orderNumber: string
-  try {
-    orderNumber = await nextOrderNumber(db)
-  } catch (e) {
-    return fail(new Error('counter failed: ' + String(e)))
-  }
-  const now = Date.now()
+    const orderNumber = await nextOrderNumber(db)
+    const now = Date.now()
 
-  try {
     await orderRef.set({
       orderNumber,
       customerId: user.uid,
@@ -97,10 +89,11 @@ export async function createOrderAction(
       byRole: 'customer',
       at: now,
     })
-  } catch (e) {
-    return fail(new Error('write failed: ' + String(e)))
-  }
 
-  revalidatePath('/account')
-  return { ok: true, orderId: orderRef.id }
+    revalidatePath('/account')
+    return { ok: true, orderId: orderRef.id }
+  } catch (e) {
+    const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e)
+    return { ok: false, error: 'INVALID', message: `server error: ${msg}` }
+  }
 }
