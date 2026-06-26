@@ -1,12 +1,18 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase/client'
 import { useAuth } from '@/lib/auth/useAuth'
 import type { Order, OrderEvent } from '@/lib/types/order'
+import type { Invoice } from '@/lib/types/invoice'
+import { toInvoice } from '@/lib/invoices/mappers'
 import { StatusPill } from '@/components/orders/StatusPill'
 import { StatusTimeline } from '@/components/orders/StatusTimeline'
+import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButton'
+import { PaymentBadge } from '@/components/invoices/PaymentBadge'
+import { InvoiceStatusPill } from '@/components/invoices/InvoiceStatusPill'
+import { ProofUploader } from '@/components/invoices/ProofUploader'
 import { formatPula } from '@/lib/money'
 import styles from './order-detail.module.css'
 
@@ -21,6 +27,9 @@ export function OrderDetail({ id }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [invoiceTick, setInvoiceTick] = useState(0)
+  const refetchInvoice = useCallback(() => setInvoiceTick((t) => t + 1), [])
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -68,6 +77,18 @@ export function OrderDetail({ id }: Props) {
       })
       .finally(() => setLoading(false))
   }, [id, user, authLoading])
+
+  // Load invoice when order has one (re-runs on refetchInvoice call)
+  useEffect(() => {
+    if (!order?.invoiceId) return
+    getDoc(doc(db, 'r31_invoices', order.invoiceId))
+      .then((snap) => {
+        if (snap.exists()) setInvoice(toInvoice(snap.id, snap.data()))
+      })
+      .catch(() => {
+        // Invoice card will just not show on error — silent
+      })
+  }, [order?.invoiceId, invoiceTick])
 
   if (authLoading || loading) {
     return (
@@ -218,7 +239,68 @@ export function OrderDetail({ id }: Props) {
           )}
         </div>
 
-        {/* Phase 2: payment / invoice / e-sign */}
+        {/* Invoice card */}
+        {invoice && (
+          <div className={styles.invoiceSection}>
+            <h2 className={styles.sectionTitle}>Invoice</h2>
+            <div className={styles.invoiceCard}>
+              {/* Header: invoice number, status pills, download */}
+              <div className={styles.invoiceHeader}>
+                <div className={styles.invoiceHeaderMeta}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
+                    {invoice.invoiceNumber}
+                  </span>
+                  <InvoiceStatusPill status={invoice.status} />
+                  <PaymentBadge status={order.paymentStatus} />
+                </div>
+                <DownloadInvoiceButton invoice={invoice} />
+              </div>
+
+              {/* Line items */}
+              <ul className={styles.invoiceLineList}>
+                {invoice.lineItems.map((line) => (
+                  <li key={line.lineId} className={styles.invoiceLine}>
+                    <span className={styles.invoiceLineDesc}>{line.description}</span>
+                    <span className={styles.invoiceLineAmount}>{formatPula(line.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Totals */}
+              <div className={styles.invoiceTotals}>
+                {invoice.discount && (
+                  <div className={styles.invoiceTotalRow}>
+                    <span className={styles.invoiceTotalLabel}>Discount</span>
+                    <span className={styles.invoiceTotalValue}>− {formatPula(invoice.discountAmount)}</span>
+                  </div>
+                )}
+                <div className={styles.invoiceTotalRow}>
+                  <span className={styles.invoiceTotalLabel}>Total</span>
+                  <span className={styles.invoiceTotalFinal}>{formatPula(invoice.total)}</span>
+                </div>
+              </div>
+
+              {/* Payment actions */}
+              {invoice.status === 'issued' && (
+                <div className={styles.invoiceActions}>
+                  <p className={styles.invoiceCashNote}>
+                    Pay at the shop — bring your device and pay in person.
+                  </p>
+                  <ProofUploader
+                    orderId={order.id}
+                    invoiceId={invoice.id}
+                    onDone={refetchInvoice}
+                  />
+                </div>
+              )}
+              {invoice.status === 'payment_submitted' && (
+                <p className={styles.invoiceAwaitingNote}>
+                  Proof received — awaiting verification.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

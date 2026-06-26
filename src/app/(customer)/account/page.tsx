@@ -5,13 +5,17 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase/client'
 import { useAuth } from '@/lib/auth/useAuth'
 import type { Order } from '@/lib/types/order'
+import type { Invoice } from '@/lib/types/invoice'
+import { toInvoice } from '@/lib/invoices/mappers'
 import { StatusPill } from '@/components/orders/StatusPill'
+import { InvoiceStatusPill } from '@/components/invoices/InvoiceStatusPill'
 import { formatPula } from '@/lib/money'
 import styles from './account.module.css'
 
 export default function AccountPage() {
   const { user, loading: authLoading } = useAuth()
   const [orders, setOrders] = useState<Order[]>([])
+  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [queryLoading, setQueryLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,17 +25,25 @@ export default function AccountPage() {
     setQueryLoading(true)
     setError(null)
 
-    const q = query(
+    const ordersQ = query(
       collection(db, 'r31_orders'),
       where('customerId', '==', user.uid),
     )
+    const invQ = query(
+      collection(db, 'r31_invoices'),
+      where('customerId', '==', user.uid),
+    )
 
-    getDocs(q)
-      .then((snap) => {
-        const rows: Order[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order))
+    Promise.all([getDocs(ordersQ), getDocs(invQ)])
+      .then(([orderSnap, invSnap]) => {
+        const rows: Order[] = orderSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Order))
         // Newest first
         rows.sort((a, b) => b.createdAt - a.createdAt)
         setOrders(rows)
+
+        const invRows: Invoice[] = invSnap.docs.map((d) => toInvoice(d.id, d.data()))
+        invRows.sort((a, b) => b.createdAt - a.createdAt)
+        setInvoices(invRows)
       })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to load orders'
@@ -123,6 +135,41 @@ export default function AccountPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Invoices section */}
+        {invoices.length > 0 && (
+          <div className={styles.invoicesSection}>
+            <h2 className={styles.invoicesSectionTitle}>Invoices</h2>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th className={styles.th}>Invoice #</th>
+                    <th className={styles.th}>Status</th>
+                    <th className={`${styles.th} ${styles.thRight}`}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => (
+                    <tr key={inv.id} className={styles.row}>
+                      <td className={styles.td}>
+                        <Link href={`/orders/${inv.orderId}`} className={styles.orderLink}>
+                          {inv.invoiceNumber}
+                        </Link>
+                      </td>
+                      <td className={styles.td}>
+                        <InvoiceStatusPill status={inv.status} />
+                      </td>
+                      <td className={`${styles.td} ${styles.tdRight}`}>
+                        {formatPula(inv.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
