@@ -15,6 +15,10 @@ service firebase.storage {
             || request.auth.uid == firestore.get(/databases/(default)/documents/r31_orders/$(orderId)).data.customerId);
       allow write: if request.auth != null && request.auth.token.role == 'owner';
     }
-    match /r31/warranty-claims/{claimId}/{file=**}  { allow read, write: if request.auth != null; }
+    match /r31/warranty-claims/{warrantyId}/{file=**} {
+      allow read, write: if request.auth != null
+        && (request.auth.token.role == 'owner'
+            || request.auth.uid == firestore.get(/databases/(default)/documents/r31_warranties/$(warrantyId)).data.customerId);
+    }
   }
 }
