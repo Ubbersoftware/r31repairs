@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase/client'
 import { useAuth } from '@/lib/auth/useAuth'
 import type { Order, OrderEvent } from '@/lib/types/order'
 import type { Invoice } from '@/lib/types/invoice'
+import type { Warranty } from '@/lib/types/warranty'
 import { toInvoice } from '@/lib/invoices/mappers'
 import { StatusPill } from '@/components/orders/StatusPill'
 import { StatusTimeline } from '@/components/orders/StatusTimeline'
@@ -13,6 +14,7 @@ import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButt
 import { PaymentBadge } from '@/components/invoices/PaymentBadge'
 import { InvoiceStatusPill } from '@/components/invoices/InvoiceStatusPill'
 import { ProofUploader } from '@/components/invoices/ProofUploader'
+import { WarrantyCard } from '@/components/warranties/WarrantyCard'
 import { formatPula } from '@/lib/money'
 import styles from './order-detail.module.css'
 
@@ -30,6 +32,7 @@ export function OrderDetail({ id }: Props) {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [invoiceTick, setInvoiceTick] = useState(0)
   const refetchInvoice = useCallback(() => setInvoiceTick((t) => t + 1), [])
+  const [warranties, setWarranties] = useState<Warranty[]>([])
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -89,6 +92,18 @@ export function OrderDetail({ id }: Props) {
         // Invoice card will just not show on error — silent
       })
   }, [order?.invoiceId, invoiceTick])
+
+  useEffect(() => {
+    if (!order || order.status !== 'completed') return
+    getDocs(query(
+      collection(db, 'r31_warranties'),
+      where('orderId', '==', id),
+    ))
+      .then((snap) => {
+        setWarranties(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Warranty)))
+      })
+      .catch(() => {})
+  }, [order, id])
 
   if (authLoading || loading) {
     return (
@@ -299,6 +314,14 @@ export function OrderDetail({ id }: Props) {
                 </p>
               )}
             </div>
+          </div>
+        )}
+        {order.status === 'completed' && warranties.length > 0 && (
+          <div className={styles.warrantiesSection}>
+            <h2 className={styles.sectionTitle}>Warranties</h2>
+            {warranties.map((w) => (
+              <WarrantyCard key={w.id} warranty={w} />
+            ))}
           </div>
         )}
       </div>
