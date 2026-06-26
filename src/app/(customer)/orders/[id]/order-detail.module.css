@@ -233,6 +233,122 @@
   color: var(--accent);
 }
 
+/* ── Invoice section ── */
+
+.invoiceSection {
+  margin-top: var(--space-7);
+}
+
+.invoiceCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.invoiceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.invoiceHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.invoiceLineList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-4);
+}
+
+.invoiceLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+}
+
+.invoiceLineDesc {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+}
+
+.invoiceLineAmount {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.invoiceTotals {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.invoiceTotalRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.invoiceTotalLabel {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.invoiceTotalValue {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.invoiceTotalFinal {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.invoiceActions {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.invoiceCashNote {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.invoiceAwaitingNote {
+  color: var(--warning);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
 /* ── Mobile ── */
 
 @media (max-width: 600px) {
@@ -245,5 +361,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-1);
+  }
+
+  .invoiceHeader {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

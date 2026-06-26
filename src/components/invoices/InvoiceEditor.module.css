@@ -1,0 +1,6 @@
+.root { display: flex; flex-direction: column; gap: var(--space-3); }
+.row { display: grid; grid-template-columns: 1fr 120px 44px; gap: var(--space-2); }
+.row input, .discountRow input, .discountRow select { min-height: 44px; padding: 0 var(--space-2); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.discountRow { display: flex; gap: var(--space-2); }
+.totalLine { color: var(--text-muted); font-size: var(--fs-sm); }
+.total { color: var(--text-strong); font-weight: 600; }

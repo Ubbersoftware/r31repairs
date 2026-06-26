@@ -7,8 +7,30 @@ vi.mock('@/app/admin/orders/actions', () => ({
   cancelOrderAction: vi.fn(async () => ({ ok: true })),
   editLineAction: vi.fn(async () => ({ ok: true })),
   addOrderNoteAction: vi.fn(async () => ({ ok: true })),
+  completeCollectionAction: vi.fn(async () => ({ ok: true })),
 }))
-vi.mock('@/lib/firebase/client', () => ({ auth: { currentUser: { getIdToken: async () => 'owner' } } }))
+vi.mock('@/app/admin/invoices/actions', () => ({
+  createInvoiceAction: vi.fn(async () => ({ ok: true })),
+  updateInvoiceAction: vi.fn(async () => ({ ok: true })),
+  issueInvoiceAction: vi.fn(async () => ({ ok: true })),
+  markPaidCashAction: vi.fn(async () => ({ ok: true })),
+  verifyPaymentAction: vi.fn(async () => ({ ok: true })),
+  cancelInvoiceAction: vi.fn(async () => ({ ok: true })),
+}))
+vi.mock('@react-pdf/renderer', () => ({
+  Document: ({ children }: any) => children,
+  Page: ({ children }: any) => children,
+  View: ({ children }: any) => children,
+  Text: ({ children }: any) => children,
+  StyleSheet: { create: (s: any) => s },
+  PDFDownloadLink: ({ children }: any) => <a href="#">{typeof children === 'function' ? children({ loading: false }) : children}</a>,
+}))
+vi.mock('firebase/storage', () => ({
+  ref: vi.fn(),
+  uploadString: vi.fn(async () => ({ ref: {} })),
+  getDownloadURL: vi.fn(async () => 'https://example.com/sig.png'),
+}))
+vi.mock('@/lib/firebase/client', () => ({ auth: { currentUser: { getIdToken: async () => 'owner' } }, storage: {} }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 import { OrderManager } from './OrderManager'
 const baseOrder = { id: 'o1', orderNumber: 'R31-0001', customerName: 'Thabo', customerPhone: '7', devices: [{ deviceId: 'd1', modelName: 'iPhone 13' }], items: [{ itemId: 'i1', deviceId: 'd1', serviceName: 'Screen', quotedAmount: 150000 }], estimatedTotal: 150000 }

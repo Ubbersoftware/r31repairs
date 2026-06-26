@@ -91,3 +91,22 @@ describe('addOrderNoteAction', () => {
     expect(allWrites[0]).toMatchObject({ type: 'note', note: 'ready for pickup', visibility: 'customer', byRole: 'owner' })
   })
 })
+
+describe('completeCollectionAction', () => {
+  it('rejects when the order is not ready', async () => {
+    Object.assign(order, { status: 'in_repair' })
+    const { completeCollectionAction } = await import('./actions')
+    expect(await completeCollectionAction('owner', 'o1', 'https://x/sig.png')).toMatchObject({ ok: false, error: 'INVALID' })
+  })
+  it('from ready: stores signature, flips to completed, appends event + notifies', async () => {
+    Object.assign(order, { status: 'ready' })
+    const { completeCollectionAction } = await import('./actions')
+    const r = await completeCollectionAction('owner', 'o1', 'https://x/sig.png')
+    expect(r).toEqual({ ok: true })
+    expect(order.status).toBe('completed')
+    expect(order.signatureURL).toBe('https://x/sig.png')
+    expect(order.completedAt).toBeTypeOf('number')
+    expect(getEvents()[0]).toMatchObject({ type: 'status_change', fromStatus: 'ready', toStatus: 'completed' })
+    expect(getNotifs().some((n) => n.type === 'status_change')).toBe(true)
+  })
+})

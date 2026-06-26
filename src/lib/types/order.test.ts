@@ -15,3 +15,11 @@ describe('statusMeta', () => {
     expect(statusMeta.in_repair.hold).toBe(false)
   })
 })
+
+describe('order statuses', () => {
+  it('includes completed with deep-green success token, ordered before cancelled', () => {
+    expect(ORDER_STATUSES).toContain('completed')
+    expect(ORDER_STATUSES.indexOf('completed')).toBeLessThan(ORDER_STATUSES.indexOf('cancelled'))
+    expect(statusMeta.completed).toEqual({ label: 'Completed', token: '--success', hold: false })
+  })
+})

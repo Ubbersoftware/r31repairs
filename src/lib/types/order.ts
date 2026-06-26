@@ -1,7 +1,7 @@
 // src/lib/types/order.ts
 export const ORDER_STATUSES = [
   'placed', 'received', 'diagnosing', 'awaiting_approval',
-  'in_repair', 'awaiting_parts', 'ready', 'cancelled',
+  'in_repair', 'awaiting_parts', 'ready', 'completed', 'cancelled',
 ] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 
@@ -13,6 +13,7 @@ export const statusMeta: Record<OrderStatus, { label: string; token: string; hol
   in_repair:         { label: 'In Repair',             token: '--accent',        hold: false },
   awaiting_parts:    { label: 'Awaiting Parts',        token: '--status-purple', hold: true  },
   ready:             { label: 'Ready for Collection',  token: '--success',       hold: false },
+  completed:         { label: 'Completed',             token: '--success',       hold: false },
   cancelled:         { label: 'Cancelled',             token: '--danger',        hold: false },
 }
 
@@ -43,11 +44,15 @@ export interface Order {
   customerName: string
   customerPhone: string
   status: OrderStatus
-  paymentStatus: 'unpaid'
+  paymentStatus: 'unpaid' | 'payment_submitted' | 'paid'
+  invoiceId: string | null
   devices: OrderDevice[]
   items: OrderItem[]
   estimatedTotal: number
   finalTotal?: number
+  signatureURL?: string
+  signedAt?: number
+  completedAt?: number
   createdAt: number
   updatedAt: number
 }

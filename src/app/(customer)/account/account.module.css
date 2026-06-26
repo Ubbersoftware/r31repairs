@@ -141,6 +141,19 @@
   text-decoration: underline;
 }
 
+/* ── Invoices section ── */
+
+.invoicesSection {
+  margin-top: var(--space-9);
+}
+
+.invoicesSectionTitle {
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: var(--space-4);
+}
+
 /* ── Mobile ── */
 
 @media (max-width: 600px) {

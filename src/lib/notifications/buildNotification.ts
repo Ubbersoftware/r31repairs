@@ -23,3 +23,23 @@ export function buildPriceNotification(args: {
     link: `/orders/${args.orderId}`, read: false, createdAt: args.now,
   }
 }
+
+export function buildInvoiceNotification(args: {
+  userId: string; orderId: string; orderNumber: string; now: number
+}): Body {
+  return {
+    userId: args.userId, type: 'invoice_issued', title: args.orderNumber,
+    body: 'Your invoice is ready',
+    link: `/orders/${args.orderId}`, read: false, createdAt: args.now,
+  }
+}
+
+export function buildPaymentNotification(args: {
+  userId: string; orderId: string; orderNumber: string; paid: boolean; now: number
+}): Body {
+  return {
+    userId: args.userId, type: 'payment_update', title: args.orderNumber,
+    body: args.paid ? 'Payment confirmed' : 'Payment proof was not accepted',
+    link: `/orders/${args.orderId}`, read: false, createdAt: args.now,
+  }
+}

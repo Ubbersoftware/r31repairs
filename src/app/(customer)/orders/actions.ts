@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { verifyUser, getAdminDb } from '@/lib/firebase/admin'
 import { nextOrderNumber } from '@/lib/orders/orderNumber'
 import { bookingSchema, type BookingInput } from '@/lib/orders/validation'
+import { proofSchema } from '@/lib/invoices/validation'
 import { getPriceMatrix, getActiveServices, getActiveModels } from '@/lib/catalog/queries'
 import { priceFor } from '@/lib/catalog/pricing'
 import { fail, type ActionResult } from '@/lib/catalog/actionResult'
@@ -92,4 +93,45 @@ export async function createOrderAction(
 
   revalidatePath('/account')
   return { ok: true, orderId: orderRef.id }
+}
+
+export async function submitProofOfPaymentAction(
+  idToken: string,
+  invoiceId: string,
+  paymentMethod: string,
+  proofURL: string,
+): Promise<ActionResult> {
+  let uid: string
+  try { uid = (await verifyUser(idToken)).uid } catch (e) { return fail(e) }
+  const parsed = proofSchema.safeParse({ paymentMethod, proofURL })
+  if (!parsed.success) return { ok: false, error: 'INVALID' }
+  const db = getAdminDb()
+  const ref = db.collection('r31_invoices').doc(invoiceId)
+  let orderId = ''
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref)
+      if (!snap.exists) throw new Error('INVALID')
+      const inv = snap.data()!
+      if (inv.customerId !== uid) throw new Error('FORBIDDEN')
+      if (inv.status !== 'issued') throw new Error('INVALID')
+      orderId = inv.orderId
+      const now = Date.now()
+      tx.update(ref, {
+        status: 'payment_submitted',
+        paymentMethod: parsed.data.paymentMethod,
+        proofOfPaymentURL: parsed.data.proofURL,
+        proofUploadedAt: now,
+        updatedAt: now,
+      })
+      tx.update(db.collection('r31_orders').doc(inv.orderId), {
+        paymentStatus: 'payment_submitted',
+        updatedAt: now,
+      })
+    })
+  } catch (e) { return fail(e) }
+  revalidatePath(`/orders/${orderId}`)
+  revalidatePath('/account')
+  revalidatePath('/admin/invoices')
+  return { ok: true }
 }
