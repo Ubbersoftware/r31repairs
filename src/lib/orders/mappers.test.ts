@@ -11,3 +11,15 @@ describe('order mappers', () => {
     expect(toOrderEvent('e1', { type: 'note', note: 'x', byUserId: 'o1', byRole: 'owner', at: 1 }).visibility).toBe('internal')
   })
 })
+
+describe('toOrder payment + invoice fields', () => {
+  it('reads paymentStatus and invoiceId from the doc, defaulting safely', () => {
+    const o = toOrder('o1', { orderNumber: 'R31-0001', customerId: 'c1', status: 'ready' })
+    expect(o.paymentStatus).toBe('unpaid')
+    expect(o.invoiceId).toBeNull()
+    const p = toOrder('o2', { paymentStatus: 'paid', invoiceId: 'inv1', signatureURL: 's', signedAt: 5, completedAt: 6 })
+    expect(p.paymentStatus).toBe('paid')
+    expect(p.invoiceId).toBe('inv1')
+    expect(p.completedAt).toBe(6)
+  })
+})

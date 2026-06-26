@@ -5,9 +5,12 @@ export function toOrder(id: string, d: D): Order {
   return {
     id, orderNumber: d.orderNumber, customerId: d.customerId,
     customerName: d.customerName ?? '', customerPhone: d.customerPhone ?? '',
-    status: d.status, paymentStatus: 'unpaid',
+    status: d.status,
+    paymentStatus: d.paymentStatus ?? 'unpaid',
+    invoiceId: d.invoiceId ?? null,
     devices: d.devices ?? [], items: d.items ?? [],
     estimatedTotal: d.estimatedTotal ?? 0, finalTotal: d.finalTotal,
+    signatureURL: d.signatureURL, signedAt: d.signedAt, completedAt: d.completedAt,
     createdAt: d.createdAt ?? 0, updatedAt: d.updatedAt ?? 0,
   }
 }
