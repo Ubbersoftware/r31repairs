@@ -43,3 +43,22 @@ export function buildPaymentNotification(args: {
     link: `/orders/${args.orderId}`, read: false, createdAt: args.now,
   }
 }
+
+export function buildClaimNotification(args: {
+  userId: string; warrantyId: string; status: string; now: number
+}): Body {
+  const labels: Record<string, string> = {
+    assessing: 'Your claim is being assessed',
+    resolved: 'Your warranty claim has been resolved',
+    rejected: 'Your warranty claim was not accepted',
+  }
+  return {
+    userId: args.userId,
+    type: 'claim_update',
+    title: 'Warranty claim update',
+    body: labels[args.status] ?? `Your claim status: ${args.status}`,
+    link: '/account',
+    read: false,
+    createdAt: args.now,
+  }
+}
