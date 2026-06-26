@@ -60,6 +60,77 @@ beforeEach(() => {
   state.revalidated.length = 0
 })
 
+const notifs = () => state.writes.filter((w) => w.path.startsWith('r31_notifications')).map((w) => w.data)
+
+describe('issue / pay / verify', () => {
+  beforeEach(() => {
+    state.invoice = {
+      invoiceNumber: 'INV-0007', orderId: 'o1', customerId: 'c1', status: 'draft',
+      lineItems: [{ lineId: 'a', description: 'Screen', sourceItemId: 'i1', amount: 120000 }],
+      discount: null, subtotal: 120000, discountAmount: 0, total: 120000,
+    }
+  })
+
+  it('updateInvoiceAction recomputes totals on a draft', async () => {
+    const { updateInvoiceAction } = await import('./actions')
+    const r = await updateInvoiceAction('owner', 'inv1', {
+      lineItems: [
+        { lineId: 'a', description: 'Screen', sourceItemId: 'i1', amount: 120000 },
+        { lineId: 'b', description: 'Seal', sourceItemId: null, amount: 8000 },
+      ],
+      discount: { type: 'amount', value: 8000 },
+    })
+    expect(r.ok).toBe(true)
+    expect(state.invoice).toMatchObject({ subtotal: 128000, discountAmount: 8000, total: 120000 })
+  })
+
+  it('issueInvoiceAction flips draft->issued and notifies the customer', async () => {
+    const { issueInvoiceAction } = await import('./actions')
+    const r = await issueInvoiceAction('owner', 'inv1')
+    expect(r.ok).toBe(true)
+    expect(state.invoice!.status).toBe('issued')
+    expect(state.invoice!.issuedAt).toBeTypeOf('number')
+    expect(notifs().some((n) => n.type === 'invoice_issued' && n.userId === 'c1')).toBe(true)
+  })
+
+  it('markPaidCashAction flips issued->paid, mirrors order, notifies', async () => {
+    state.invoice!.status = 'issued'
+    const { markPaidCashAction } = await import('./actions')
+    const r = await markPaidCashAction('owner', 'inv1')
+    expect(r.ok).toBe(true)
+    expect(state.invoice).toMatchObject({ status: 'paid', paymentMethod: 'cash' })
+    expect(state.order.paymentStatus).toBe('paid')
+    expect(notifs().some((n) => n.type === 'payment_update')).toBe(true)
+  })
+
+  it('verifyPaymentAction approve -> paid + mirror', async () => {
+    state.invoice = { ...state.invoice, status: 'payment_submitted', paymentMethod: 'orange_money', proofOfPaymentURL: 'u' }
+    const { verifyPaymentAction } = await import('./actions')
+    const r = await verifyPaymentAction('owner', 'inv1', true)
+    expect(r.ok).toBe(true)
+    expect(state.invoice!.status).toBe('paid')
+    expect(state.order.paymentStatus).toBe('paid')
+  })
+
+  it('verifyPaymentAction reject -> issued, clears proof, mirrors unpaid', async () => {
+    state.order.paymentStatus = 'payment_submitted'
+    state.invoice = { ...state.invoice, status: 'payment_submitted', paymentMethod: 'orange_money', proofOfPaymentURL: 'u' }
+    const { verifyPaymentAction } = await import('./actions')
+    const r = await verifyPaymentAction('owner', 'inv1', false)
+    expect(r.ok).toBe(true)
+    expect(state.invoice!.status).toBe('issued')
+    expect(state.invoice!.proofOfPaymentURL).toBeNull()
+    expect(state.order.paymentStatus).toBe('unpaid')
+  })
+
+  it('cancelInvoiceAction cancels a non-paid invoice', async () => {
+    const { cancelInvoiceAction } = await import('./actions')
+    const r = await cancelInvoiceAction('owner', 'inv1')
+    expect(r.ok).toBe(true)
+    expect(state.invoice!.status).toBe('cancelled')
+  })
+})
+
 describe('createInvoiceAction', () => {
   it('rejects a non-owner', async () => {
     const { createInvoiceAction } = await import('./actions')
