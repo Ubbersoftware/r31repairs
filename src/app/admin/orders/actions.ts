@@ -143,6 +143,40 @@ export async function editLineAction(
   return { ok: true }
 }
 
+export async function completeCollectionAction(
+  idToken: string,
+  orderId: string,
+  signatureURL: string,
+): Promise<ActionResult> {
+  let uid: string
+  try { uid = (await verifyOwner(idToken)).uid } catch (e) { return fail(e) }
+  if (!signatureURL) return { ok: false, error: 'INVALID' }
+  const db = getAdminDb()
+  const ref = db.collection('r31_orders').doc(orderId)
+  const eventRef = ref.collection('events').doc()
+  const notifRef = db.collection('r31_notifications').doc()
+  try {
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref)
+      if (!snap.exists) throw new Error('INVALID')
+      const order = snap.data()!
+      if (order.status !== 'ready') throw new Error('INVALID')
+      const now = Date.now()
+      tx.update(ref, { status: 'completed', signatureURL, signedAt: now, completedAt: now, updatedAt: now })
+      tx.set(eventRef, {
+        type: 'status_change', fromStatus: 'ready', toStatus: 'completed',
+        note: 'Collected & signed', visibility: 'customer', byUserId: uid, byRole: 'owner', at: now,
+      })
+      tx.set(notifRef, buildStatusNotification({
+        userId: order.customerId as string, orderId,
+        orderNumber: order.orderNumber as string, toStatus: 'completed', now,
+      }))
+    })
+  } catch (e) { return fail(e) }
+  revalidateOrder(orderId)
+  return { ok: true }
+}
+
 export async function addOrderNoteAction(
   idToken: string,
   orderId: string,
