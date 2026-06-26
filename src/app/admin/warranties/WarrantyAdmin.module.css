@@ -9,3 +9,4 @@
 .expiry { color: var(--text-muted); font-size: var(--fs-sm); }
 .empty { color: var(--text-muted); padding: var(--space-4) 0; }
 .sectionTitle { font-size: var(--fs-lg); font-weight: 600; color: var(--text-strong); margin: 0; }
+.flagged { border-color: var(--accent); }
