@@ -30,7 +30,7 @@ service cloud.firestore {
     }
     match /r31_invoices/{id} {
       allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
-      allow write: if isOwner();
+      allow write: if false; // all writes via Admin SDK server actions
     }
     match /r31_warranties/{id} {
       allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
