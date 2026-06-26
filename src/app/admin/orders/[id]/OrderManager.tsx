@@ -1,17 +1,44 @@
 'use client'
 import { useState } from 'react'
-import { auth } from '@/lib/firebase/client'
+import { auth, storage } from '@/lib/firebase/client'
+import { ref, uploadString, getDownloadURL } from 'firebase/storage'
 import {
   changeOrderStatusAction,
   cancelOrderAction,
   editLineAction,
   addOrderNoteAction,
+  completeCollectionAction,
 } from '@/app/admin/orders/actions'
+import {
+  createInvoiceAction,
+  updateInvoiceAction,
+  issueInvoiceAction,
+  markPaidCashAction,
+  verifyPaymentAction,
+} from '@/app/admin/invoices/actions'
 import { StatusPill } from '@/components/orders/StatusPill'
 import { StatusTimeline } from '@/components/orders/StatusTimeline'
+import { InvoiceEditor } from '@/components/invoices/InvoiceEditor'
+import { InvoiceStatusPill } from '@/components/invoices/InvoiceStatusPill'
+import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButton'
+import { SignaturePad } from '@/components/orders/SignaturePad'
 import { ORDER_STATUSES, statusMeta, type Order, type OrderEvent, type OrderStatus } from '@/lib/types/order'
+import type { Invoice } from '@/lib/types/invoice'
 import { formatPula } from '@/lib/money'
 import styles from './OrderManager.module.css'
+
+/* ---- module-level helpers ---- */
+async function token(): Promise<string> {
+  const t = await auth.currentUser?.getIdToken()
+  if (!t) throw new Error('not signed in')
+  return t
+}
+
+async function uploadSignature(orderId: string, pngDataUrl: string): Promise<string> {
+  const r = ref(storage, `r31/signatures/${orderId}/${Date.now()}.png`)
+  const snap = await uploadString(r, pngDataUrl, 'data_url')
+  return getDownloadURL(snap.ref)
+}
 
 /* ---- status progression: what's the natural next step ---- */
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
@@ -26,14 +53,16 @@ const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
 interface Props {
   order: Order
   events: OrderEvent[]
+  invoice?: Invoice | null
   onChanged?: () => void
 }
 
-export function OrderManager({ order, events, onChanged }: Props) {
+export function OrderManager({ order, events, invoice, onChanged }: Props) {
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null)
   const [noteText, setNoteText] = useState('')
   const [editAmounts, setEditAmounts] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const [showSignaturePad, setShowSignaturePad] = useState(false)
 
   async function getToken(): Promise<string | null> {
     return auth.currentUser?.getIdToken() ?? null
@@ -348,6 +377,205 @@ export function OrderManager({ order, events, onChanged }: Props) {
           </details>
         )}
       </section>
+
+      {/* ---- Invoice ---- */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Invoice</h2>
+
+        {!invoice ? (
+          /* No invoice yet */
+          <button
+            type="button"
+            className={styles.btnGhost}
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true)
+              try {
+                const result = await createInvoiceAction(await token(), order.id)
+                if (result.ok) { showFeedback(true, 'Invoice created'); onChanged?.() }
+                else showFeedback(false, result.error ?? 'Failed to create invoice')
+              } catch (e) {
+                showFeedback(false, e instanceof Error ? e.message : 'Failed')
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            Create invoice
+          </button>
+        ) : invoice.status === 'draft' ? (
+          /* Draft: editable */
+          <>
+            <InvoiceEditor
+              initialLineItems={invoice.lineItems}
+              initialDiscount={invoice.discount}
+              onSave={async (input) => {
+                const result = await updateInvoiceAction(await token(), invoice.id, input)
+                if (result.ok) { showFeedback(true, 'Invoice saved'); await onChanged?.() }
+                else showFeedback(false, result.error ?? 'Save failed')
+              }}
+            />
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              disabled={busy}
+              style={{ marginTop: 'var(--space-4)' }}
+              onClick={async () => {
+                setBusy(true)
+                try {
+                  const result = await issueInvoiceAction(await token(), invoice.id)
+                  if (result.ok) { showFeedback(true, 'Invoice issued'); onChanged?.() }
+                  else showFeedback(false, result.error ?? 'Failed to issue')
+                } catch (e) {
+                  showFeedback(false, e instanceof Error ? e.message : 'Failed')
+                } finally {
+                  setBusy(false)
+                }
+              }}
+            >
+              Issue invoice
+            </button>
+          </>
+        ) : (
+          /* issued / payment_submitted / paid / cancelled */
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+              <InvoiceStatusPill status={invoice.status} />
+              {(invoice.status === 'issued' || invoice.status === 'payment_submitted' || invoice.status === 'paid') && (
+                <DownloadInvoiceButton invoice={invoice} />
+              )}
+            </div>
+
+            {invoice.status === 'issued' && (
+              <button
+                type="button"
+                className={styles.btnGhost}
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true)
+                  try {
+                    const result = await markPaidCashAction(await token(), invoice.id)
+                    if (result.ok) { showFeedback(true, 'Marked as paid'); onChanged?.() }
+                    else showFeedback(false, result.error ?? 'Failed')
+                  } catch (e) {
+                    showFeedback(false, e instanceof Error ? e.message : 'Failed')
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+              >
+                Mark paid (cash)
+              </button>
+            )}
+
+            {invoice.status === 'payment_submitted' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                {invoice.proofOfPaymentURL && (
+                  <a
+                    href={invoice.proofOfPaymentURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--accent)', fontSize: 'var(--fs-sm)' }}
+                  >
+                    View proof of payment
+                  </a>
+                )}
+                <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true)
+                      try {
+                        const result = await verifyPaymentAction(await token(), invoice.id, true)
+                        if (result.ok) { showFeedback(true, 'Payment approved'); onChanged?.() }
+                        else showFeedback(false, result.error ?? 'Failed')
+                      } catch (e) {
+                        showFeedback(false, e instanceof Error ? e.message : 'Failed')
+                      } finally {
+                        setBusy(false)
+                      }
+                    }}
+                  >
+                    Approve payment
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.btnGhost} ${styles.btnDanger}`}
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true)
+                      try {
+                        const result = await verifyPaymentAction(await token(), invoice.id, false)
+                        if (result.ok) { showFeedback(true, 'Payment rejected'); onChanged?.() }
+                        else showFeedback(false, result.error ?? 'Failed')
+                      } catch (e) {
+                        showFeedback(false, e instanceof Error ? e.message : 'Failed')
+                      } finally {
+                        setBusy(false)
+                      }
+                    }}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* ---- Complete collection ---- */}
+      {order.status === 'ready' && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Complete collection</h2>
+          {!showSignaturePad ? (
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={() => setShowSignaturePad(true)}
+            >
+              Collect &amp; sign
+            </button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              {order.paymentStatus !== 'paid' && (
+                <p style={{ color: 'var(--warning)', fontSize: 'var(--fs-sm)', margin: 0 }}>
+                  Invoice unpaid ⚠ — complete anyway?
+                </p>
+              )}
+              <SignaturePad
+                onConfirm={async (png) => {
+                  setBusy(true)
+                  try {
+                    const url = await uploadSignature(order.id, png)
+                    const result = await completeCollectionAction(await token(), order.id, url)
+                    if (result.ok) {
+                      showFeedback(true, 'Order completed')
+                      setShowSignaturePad(false)
+                      onChanged?.()
+                    } else {
+                      showFeedback(false, result.error ?? 'Failed')
+                    }
+                  } catch (e) {
+                    showFeedback(false, e instanceof Error ? e.message : 'Failed')
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className={`${styles.btnSm} ${styles.btnGhostSm}`}
+                onClick={() => setShowSignaturePad(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   )
 }
