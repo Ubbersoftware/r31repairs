@@ -4,7 +4,13 @@ const order: Record<string, unknown> = {
   status: 'placed',
   customerId: 'c1',
   orderNumber: 'R31-0042',
-  items: [{ itemId: 'i1', quotedAmount: 80000 }],
+  invoiceId: 'inv1',
+  items: [
+    { itemId: 'i1', deviceId: 'd1', serviceName: 'Screen Replacement', quotedAmount: 80000 },
+  ],
+  devices: [
+    { deviceId: 'd1', modelName: 'iPhone 13' },
+  ],
 }
 const allWrites: Record<string, unknown>[] = []
 const revalidated: string[] = []
@@ -27,7 +33,11 @@ vi.mock('@/lib/firebase/admin', () => ({
 }))
 beforeEach(() => {
   Object.keys(order).forEach(k => delete order[k])
-  Object.assign(order, { status: 'placed', customerId: 'c1', orderNumber: 'R31-0042', items: [{ itemId: 'i1', quotedAmount: 80000 }] })
+  Object.assign(order, {
+    id: 'o1', status: 'placed', customerId: 'c1', orderNumber: 'R31-0042', invoiceId: 'inv1',
+    items: [{ itemId: 'i1', deviceId: 'd1', serviceName: 'Screen Replacement', quotedAmount: 80000 }],
+    devices: [{ deviceId: 'd1', modelName: 'iPhone 13' }],
+  })
   allWrites.length = 0
   revalidated.length = 0
 })
@@ -108,5 +118,24 @@ describe('completeCollectionAction', () => {
     expect(order.completedAt).toBeTypeOf('number')
     expect(getEvents()[0]).toMatchObject({ type: 'status_change', fromStatus: 'ready', toStatus: 'completed' })
     expect(getNotifs().some((n) => n.type === 'status_change')).toBe(true)
+  })
+  it('creates one warranty doc per item with correct fields', async () => {
+    Object.assign(order, { status: 'ready' })
+    const { completeCollectionAction } = await import('./actions')
+    const r = await completeCollectionAction('owner', 'o1', 'https://x/sig.png')
+    expect(r).toEqual({ ok: true })
+    const warranties = allWrites.filter((w) => 'itemId' in w)
+    expect(warranties).toHaveLength(1)
+    expect(warranties[0]).toMatchObject({
+      orderId: 'o1',
+      customerId: 'c1',
+      invoiceId: 'inv1',
+      itemId: 'i1',
+      serviceName: 'Screen Replacement',
+      phoneModelName: 'iPhone 13',
+      status: 'active',
+    })
+    expect(warranties[0].endDate).toBeTypeOf('number')
+    expect(warranties[0].endDate as number).toBeGreaterThan(warranties[0].startDate as number)
   })
 })
