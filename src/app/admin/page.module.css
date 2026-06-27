@@ -13,22 +13,31 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
+  text-decoration: none;
+  display: block;
+  transition: border-color 0.15s;
+}
+.card:hover {
+  border-color: var(--accent);
+}
+.cardAlert {
+  border-color: var(--accent);
+}
+.count {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-strong);
+  margin-bottom: var(--space-2);
+}
+.cardTitle {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 0 0 var(--space-2);
 }
 .desc {
   color: var(--text-muted);
   font-size: var(--fs-sm);
-  margin-top: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-.soon {
-  display: inline-block;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 2px var(--space-3);
+  margin: 0;
 }
