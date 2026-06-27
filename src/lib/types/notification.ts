@@ -1,5 +1,5 @@
 // src/lib/types/notification.ts
-export type NotificationType = 'status_change' | 'price_update' | 'invoice_issued' | 'payment_update'
+export type NotificationType = 'status_change' | 'price_update' | 'invoice_issued' | 'payment_update' | 'claim_update'
 
 export interface Notification {
   id: string

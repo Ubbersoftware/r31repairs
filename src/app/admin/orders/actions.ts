@@ -6,6 +6,10 @@ import { statusChangeSchema, lineEditSchema, noteSchema } from '@/lib/orders/val
 import { fail, type ActionResult } from '@/lib/catalog/actionResult'
 import type { OrderStatus } from '@/lib/types/order'
 import { buildStatusNotification, buildPriceNotification } from '@/lib/notifications/buildNotification'
+import { orderToWarrantyDrafts } from '@/lib/warranties/mappers'
+import { WARRANTY_MONTHS } from '@/lib/warranties/expiry'
+import { getSettings } from '@/lib/settings/queries'
+import type { Order } from '@/lib/types/order'
 
 function revalidateOrder(orderId: string) {
   revalidatePath('/admin/orders')
@@ -151,6 +155,12 @@ export async function completeCollectionAction(
   let uid: string
   try { uid = (await verifyOwner(idToken)).uid } catch (e) { return fail(e) }
   if (!signatureURL) return { ok: false, error: 'INVALID' }
+  // Fetch settings outside transaction; falls back to WARRANTY_MONTHS if not yet saved
+  let warrantyMonths = WARRANTY_MONTHS
+  try {
+    const settings = await getSettings()
+    warrantyMonths = settings.warrantyMonths
+  } catch { /* use default */ }
   const db = getAdminDb()
   const ref = db.collection('r31_orders').doc(orderId)
   const eventRef = ref.collection('events').doc()
@@ -159,7 +169,7 @@ export async function completeCollectionAction(
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref)
       if (!snap.exists) throw new Error('INVALID')
-      const order = snap.data()!
+      const order = snap.data()! as Order
       if (order.status !== 'ready') throw new Error('INVALID')
       const now = Date.now()
       tx.update(ref, { status: 'completed', signatureURL, signedAt: now, completedAt: now, updatedAt: now })
@@ -168,9 +178,13 @@ export async function completeCollectionAction(
         note: 'Collected & signed', visibility: 'customer', byUserId: uid, byRole: 'owner', at: now,
       })
       tx.set(notifRef, buildStatusNotification({
-        userId: order.customerId as string, orderId,
-        orderNumber: order.orderNumber as string, toStatus: 'completed', now,
+        userId: order.customerId, orderId,
+        orderNumber: order.orderNumber, toStatus: 'completed', now,
       }))
+      const drafts = orderToWarrantyDrafts(order, warrantyMonths, now)
+      for (const draft of drafts) {
+        tx.set(db.collection('r31_warranties').doc(), draft)
+      }
     })
   } catch (e) { return fail(e) }
   revalidateOrder(orderId)

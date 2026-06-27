@@ -15,7 +15,10 @@ service cloud.firestore {
     match /r31_phoneModels/{id} { allow read: if true; allow write: if isOwner(); }
     match /r31_prices/{id}      { allow read: if true; allow write: if isOwner(); }
     match /r31_faqs/{id}        { allow read: if true; allow write: if isOwner(); }
-    match /r31_settings/{id}    { allow read: if true; allow write: if isOwner(); }
+    match /r31_settings/{id} {
+      allow read: if true;
+      allow write: if false; // updateSettingsAction only
+    }
 
     match /r31_orders/{orderId} {
       allow read: if isOwner() || (request.auth != null && request.auth.uid == resource.data.customerId);
@@ -34,12 +37,11 @@ service cloud.firestore {
     }
     match /r31_warranties/{id} {
       allow read: if isOwner() || (isSignedIn() && resource.data.customerId == request.auth.uid);
-      allow write: if isOwner();
+      allow write: if false; // Admin-SDK server actions only
       match /claims/{claimId} {
-        allow read: if isOwner() || (isSignedIn() && get(/databases/$(database)/documents/r31_warranties/$(id)).data.customerId == request.auth.uid);
-        allow create: if isSignedIn();
-        allow update: if isOwner();
-        allow delete: if false;
+        allow read: if isOwner()
+          || (isSignedIn() && get(/databases/$(database)/documents/r31_warranties/$(id)).data.customerId == request.auth.uid);
+        allow write: if false; // raiseClaimAction + updateClaimAction via Admin-SDK
       }
     }
     match /r31_notifications/{notifId} {

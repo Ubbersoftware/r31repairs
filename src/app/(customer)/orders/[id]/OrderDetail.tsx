@@ -6,13 +6,20 @@ import { db } from '@/lib/firebase/client'
 import { useAuth } from '@/lib/auth/useAuth'
 import type { Order, OrderEvent } from '@/lib/types/order'
 import type { Invoice } from '@/lib/types/invoice'
+import type { Warranty } from '@/lib/types/warranty'
+import type { Claim } from '@/lib/types/warranty'
 import { toInvoice } from '@/lib/invoices/mappers'
+import { toClaim } from '@/lib/warranties/mappers'
+import { warrantyState } from '@/lib/warranties/expiry'
 import { StatusPill } from '@/components/orders/StatusPill'
 import { StatusTimeline } from '@/components/orders/StatusTimeline'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButton'
 import { PaymentBadge } from '@/components/invoices/PaymentBadge'
 import { InvoiceStatusPill } from '@/components/invoices/InvoiceStatusPill'
 import { ProofUploader } from '@/components/invoices/ProofUploader'
+import { WarrantyCard } from '@/components/warranties/WarrantyCard'
+import { ClaimForm } from '@/components/warranties/ClaimForm'
+import { ClaimStatusPill } from '@/components/warranties/ClaimStatusPill'
 import { formatPula } from '@/lib/money'
 import styles from './order-detail.module.css'
 
@@ -30,6 +37,9 @@ export function OrderDetail({ id }: Props) {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [invoiceTick, setInvoiceTick] = useState(0)
   const refetchInvoice = useCallback(() => setInvoiceTick((t) => t + 1), [])
+  const [warranties, setWarranties] = useState<Warranty[]>([])
+  const [claimsByWarranty, setClaimsByWarranty] = useState<Record<string, Claim[]>>({})
+  const [showClaimForm, setShowClaimForm] = useState<string | null>(null)
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -89,6 +99,37 @@ export function OrderDetail({ id }: Props) {
         // Invoice card will just not show on error — silent
       })
   }, [order?.invoiceId, invoiceTick])
+
+  useEffect(() => {
+    if (!order || order.status !== 'completed') return
+    getDocs(query(
+      collection(db, 'r31_warranties'),
+      where('orderId', '==', id),
+    ))
+      .then((snap) => {
+        setWarranties(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Warranty)))
+      })
+      .catch(() => {})
+  }, [order, id])
+
+  useEffect(() => {
+    if (!warranties.length) return
+    const claimed = warranties.filter((w) => w.status === 'claimed')
+    if (!claimed.length) return
+    Promise.all(
+      claimed.map((w) =>
+        getDocs(collection(db, 'r31_warranties', w.id, 'claims'))
+          .then((snap) => ({
+            warrantyId: w.id,
+            claims: snap.docs.map((d) => toClaim(d.id, d.data())).sort((a, b) => b.createdAt - a.createdAt),
+          })),
+      ),
+    ).then((results) => {
+      const map: Record<string, Claim[]> = {}
+      for (const r of results) map[r.warrantyId] = r.claims
+      setClaimsByWarranty(map)
+    }).catch(() => {})
+  }, [warranties])
 
   if (authLoading || loading) {
     return (
@@ -299,6 +340,53 @@ export function OrderDetail({ id }: Props) {
                 </p>
               )}
             </div>
+          </div>
+        )}
+        {order.status === 'completed' && warranties.length > 0 && (
+          <div className={styles.warrantiesSection}>
+            <h2 className={styles.sectionTitle}>Warranties</h2>
+            {warranties.map((w) => {
+              const state = warrantyState(w, Date.now())
+              const wClaims = claimsByWarranty[w.id] ?? []
+              const latestClaim = wClaims[0] ?? null
+              return (
+                <div key={w.id}>
+                  <WarrantyCard warranty={w} />
+                  {state === 'active' && showClaimForm !== w.id && (
+                    <button
+                      type="button"
+                      onClick={() => setShowClaimForm(w.id)}
+                      style={{ marginTop: 'var(--space-2)', minHeight: 40 }}
+                    >
+                      Raise a claim
+                    </button>
+                  )}
+                  {state === 'active' && showClaimForm === w.id && (
+                    <div style={{ marginTop: 'var(--space-3)' }}>
+                      <ClaimForm
+                        warrantyId={w.id}
+                        onDone={() => {
+                          setShowClaimForm(null)
+                          setWarranties((prev) =>
+                            prev.map((pw) => pw.id === w.id ? { ...pw, status: 'claimed' } : pw)
+                          )
+                        }}
+                      />
+                    </div>
+                  )}
+                  {latestClaim && (
+                    <div style={{ marginTop: 'var(--space-2)', display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                      <ClaimStatusPill status={latestClaim.status} />
+                      {latestClaim.adminNotes && (
+                        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>
+                          {latestClaim.adminNotes}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

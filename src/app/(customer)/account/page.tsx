@@ -6,9 +6,12 @@ import { db } from '@/lib/firebase/client'
 import { useAuth } from '@/lib/auth/useAuth'
 import type { Order } from '@/lib/types/order'
 import type { Invoice } from '@/lib/types/invoice'
+import type { Warranty } from '@/lib/types/warranty'
 import { toInvoice } from '@/lib/invoices/mappers'
+import { warrantyState } from '@/lib/warranties/expiry'
 import { StatusPill } from '@/components/orders/StatusPill'
 import { InvoiceStatusPill } from '@/components/invoices/InvoiceStatusPill'
+import { WarrantyStatusPill } from '@/components/warranties/WarrantyStatusPill'
 import { formatPula } from '@/lib/money'
 import styles from './account.module.css'
 
@@ -16,6 +19,7 @@ export default function AccountPage() {
   const { user, loading: authLoading } = useAuth()
   const [orders, setOrders] = useState<Order[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [warranties, setWarranties] = useState<Warranty[]>([])
   const [queryLoading, setQueryLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,9 +37,13 @@ export default function AccountPage() {
       collection(db, 'r31_invoices'),
       where('customerId', '==', user.uid),
     )
+    const wQ = query(
+      collection(db, 'r31_warranties'),
+      where('customerId', '==', user.uid),
+    )
 
-    Promise.all([getDocs(ordersQ), getDocs(invQ)])
-      .then(([orderSnap, invSnap]) => {
+    Promise.all([getDocs(ordersQ), getDocs(invQ), getDocs(wQ)])
+      .then(([orderSnap, invSnap, wSnap]) => {
         const rows: Order[] = orderSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Order))
         // Newest first
         rows.sort((a, b) => b.createdAt - a.createdAt)
@@ -44,6 +52,10 @@ export default function AccountPage() {
         const invRows: Invoice[] = invSnap.docs.map((d) => toInvoice(d.id, d.data()))
         invRows.sort((a, b) => b.createdAt - a.createdAt)
         setInvoices(invRows)
+
+        const wRows: Warranty[] = wSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Warranty))
+        wRows.sort((a, b) => b.createdAt - a.createdAt)
+        setWarranties(wRows)
       })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to load orders'
@@ -167,6 +179,44 @@ export default function AccountPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Warranties section */}
+        {warranties.length > 0 && (
+          <div className={styles.invoicesSection}>
+            <h2 className={styles.invoicesSectionTitle}>Warranties</h2>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th className={styles.th}>Service</th>
+                    <th className={styles.th}>Model</th>
+                    <th className={styles.th}>Status</th>
+                    <th className={styles.th}>Expires</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {warranties.map((w) => {
+                    const now = Date.now()
+                    return (
+                      <tr key={w.id} className={styles.row}>
+                        <td className={styles.td}>
+                          <a href={`/orders/${w.orderId}`} className={styles.orderLink}>
+                            {w.serviceName}
+                          </a>
+                        </td>
+                        <td className={`${styles.td} ${styles.tdMuted}`}>{w.phoneModelName}</td>
+                        <td className={styles.td}><WarrantyStatusPill state={warrantyState(w, now)} /></td>
+                        <td className={`${styles.td} ${styles.tdMuted}`}>
+                          {new Date(w.endDate).toLocaleDateString('en-BW', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
