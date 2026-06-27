@@ -20,21 +20,6 @@ const mockSettingsData = {
   updatedBy: '',
 }
 
-vi.mock('firebase/firestore', async () => {
-  const { collection, getDocs, query, where, doc, getDoc } = await vi.importActual<typeof import('firebase/firestore')>('firebase/firestore')
-  return {
-    collection,
-    getDocs,
-    query,
-    where,
-    doc: vi.fn(() => ({})),
-    getDoc: vi.fn(async () => ({
-      exists: () => true,
-      data: () => mockSettingsData,
-    })),
-  }
-})
-
 vi.mock('firebase/storage', () => ({
   ref: vi.fn(() => ({})),
   uploadBytes: vi.fn(async () => ({ ref: {} })),
