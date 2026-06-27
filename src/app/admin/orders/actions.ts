@@ -8,6 +8,7 @@ import type { OrderStatus } from '@/lib/types/order'
 import { buildStatusNotification, buildPriceNotification } from '@/lib/notifications/buildNotification'
 import { orderToWarrantyDrafts } from '@/lib/warranties/mappers'
 import { WARRANTY_MONTHS } from '@/lib/warranties/expiry'
+import { getSettings } from '@/lib/settings/queries'
 import type { Order } from '@/lib/types/order'
 
 function revalidateOrder(orderId: string) {
@@ -154,6 +155,12 @@ export async function completeCollectionAction(
   let uid: string
   try { uid = (await verifyOwner(idToken)).uid } catch (e) { return fail(e) }
   if (!signatureURL) return { ok: false, error: 'INVALID' }
+  // Fetch settings outside transaction; falls back to WARRANTY_MONTHS if not yet saved
+  let warrantyMonths = WARRANTY_MONTHS
+  try {
+    const settings = await getSettings()
+    warrantyMonths = settings.warrantyMonths
+  } catch { /* use default */ }
   const db = getAdminDb()
   const ref = db.collection('r31_orders').doc(orderId)
   const eventRef = ref.collection('events').doc()
@@ -174,7 +181,7 @@ export async function completeCollectionAction(
         userId: order.customerId, orderId,
         orderNumber: order.orderNumber, toStatus: 'completed', now,
       }))
-      const drafts = orderToWarrantyDrafts(order, WARRANTY_MONTHS, now)
+      const drafts = orderToWarrantyDrafts(order, warrantyMonths, now)
       for (const draft of drafts) {
         tx.set(db.collection('r31_warranties').doc(), draft)
       }

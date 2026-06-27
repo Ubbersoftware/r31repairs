@@ -7,7 +7,11 @@ vi.mock('@/app/(customer)/orders/actions', () => ({ submitProofOfPaymentAction: 
 vi.mock('firebase/storage', () => ({
   ref: () => ({}), uploadBytes: async () => ({ ref: {} }), getDownloadURL: async () => 'https://x/p.png',
 }))
-vi.mock('@/lib/firebase/client', () => ({ auth: { currentUser: { getIdToken: async () => 'tok' } }, storage: {} }))
+vi.mock('@/lib/firebase/client', () => ({ auth: { currentUser: { getIdToken: async () => 'tok' } }, storage: {}, db: {} }))
+vi.mock('firebase/firestore', () => ({
+  doc: () => ({}),
+  getDoc: async () => ({ exists: () => false, data: () => ({}) }),
+}))
 
 import { ProofUploader } from './ProofUploader'
 

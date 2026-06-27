@@ -1,9 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { auth, storage } from '@/lib/firebase/client'
+import { doc, getDoc } from 'firebase/firestore'
+import { auth, storage, db } from '@/lib/firebase/client'
 import { submitProofOfPaymentAction } from '@/app/(customer)/orders/actions'
-import { PAYMENT_CHANNELS, type PaymentMethod } from '@/lib/invoices/paymentMethods'
+import { PAYMENT_CHANNELS, type PaymentMethod, type PaymentChannel } from '@/lib/invoices/paymentMethods'
+import { mergeSettings } from '@/lib/settings/defaults'
 
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp']
 const MAX = 5_000_000
@@ -12,7 +14,18 @@ export function ProofUploader({ orderId, invoiceId, onDone }: { orderId: string;
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
-  const channel = PAYMENT_CHANNELS.find((c) => c.id === method)!
+  const [channels, setChannels] = useState<PaymentChannel[]>(PAYMENT_CHANNELS)
+
+  useEffect(() => {
+    getDoc(doc(db, 'r31_settings', 'shop'))
+      .then((snap) => {
+        const s = mergeSettings(snap.exists() ? snap.data() as any : null)
+        if (s.paymentChannels.length) setChannels(s.paymentChannels)
+      })
+      .catch(() => {}) // fall back to PAYMENT_CHANNELS on error
+  }, [])
+
+  const channel = channels.find((c) => c.id === method) ?? channels[0]
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -37,7 +50,7 @@ export function ProofUploader({ orderId, invoiceId, onDone }: { orderId: string;
       <label>
         <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>Payment method</span>
         <select aria-label="Payment method" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)} style={{ minHeight: 44 }}>
-          {PAYMENT_CHANNELS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+          {channels.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
       </label>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>{channel.payToLabel}: {channel.details}</p>

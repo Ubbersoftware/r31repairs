@@ -15,6 +15,9 @@ const order: Record<string, unknown> = {
 const allWrites: Record<string, unknown>[] = []
 const revalidated: string[] = []
 vi.mock('next/cache', () => ({ revalidatePath: (p: string) => revalidated.push(p) }))
+vi.mock('@/lib/settings/queries', () => ({
+  getSettings: async () => ({ warrantyMonths: 3 }),
+}))
 vi.mock('@/lib/firebase/admin', () => ({
   verifyOwner: async (t: string) => { if (t !== 'owner') throw new Error(t === 'cust' ? 'FORBIDDEN' : 'UNAUTHENTICATED'); return { uid: 'o1' } },
   getAdminDb: () => ({
