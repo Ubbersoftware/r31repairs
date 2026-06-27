@@ -16,6 +16,6 @@ export const DEFAULT_SETTINGS: ShopSettings = {
 }
 
 export function mergeSettings(stored: Partial<ShopSettings> | null): ShopSettings {
-  if (!stored) return DEFAULT_SETTINGS
+  if (!stored) return { ...DEFAULT_SETTINGS }
   return { ...DEFAULT_SETTINGS, ...stored }
 }

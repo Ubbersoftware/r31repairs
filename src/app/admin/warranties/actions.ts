@@ -35,5 +35,6 @@ export async function updateClaimAction(
     })
   } catch (e) { return fail(e) }
   revalidatePath('/admin/warranties')
+  revalidatePath('/account')
   return { ok: true }
 }

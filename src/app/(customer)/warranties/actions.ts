@@ -24,9 +24,9 @@ export async function raiseClaimAction(
       if (!snap.exists) throw new Error('INVALID')
       const warranty = toWarranty(snap.id, snap.data()!)
       if (warranty.customerId !== uid) throw new Error('FORBIDDEN')
-      const state = warrantyState(warranty, Date.now())
-      if (state !== 'active') throw new Error('INVALID')
       const now = Date.now()
+      const state = warrantyState(warranty, now)
+      if (state !== 'active') throw new Error('INVALID')
       tx.update(wRef, { status: 'claimed', updatedAt: now })
       tx.set(claimRef, {
         warrantyId,

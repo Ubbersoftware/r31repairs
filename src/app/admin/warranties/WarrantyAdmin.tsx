@@ -24,27 +24,33 @@ export function WarrantyAdmin() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>('all')
   const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
   const load = async () => {
-    const snap = await getDocs(collection(db, 'r31_warranties'))
-    const ws = snap.docs
-      .map((d) => toWarranty(d.id, d.data()))
-      .sort((a, b) => b.createdAt - a.createdAt)
-    setWarranties(ws)
+    try {
+      const snap = await getDocs(collection(db, 'r31_warranties'))
+      const ws = snap.docs
+        .map((d) => toWarranty(d.id, d.data()))
+        .sort((a, b) => b.createdAt - a.createdAt)
+      setWarranties(ws)
 
-    const claimedWs = ws.filter((w) => w.status === 'claimed')
-    const claimArrays = await Promise.all(
-      claimedWs.map(async (w) => {
-        const cs = await getDocs(collection(db, 'r31_warranties', w.id, 'claims'))
-        return cs.docs.map((d): ClaimRow => ({
-          ...toClaim(d.id, d.data()),
-          warrantyServiceName: w.serviceName,
-          warrantyPhoneModel: w.phoneModelName,
-        }))
-      }),
-    )
-    setClaims(claimArrays.flat().sort((a, b) => b.createdAt - a.createdAt))
-    setLoading(false)
+      const claimedWs = ws.filter((w) => w.status === 'claimed')
+      const claimArrays = await Promise.all(
+        claimedWs.map(async (w) => {
+          const cs = await getDocs(collection(db, 'r31_warranties', w.id, 'claims'))
+          return cs.docs.map((d): ClaimRow => ({
+            ...toClaim(d.id, d.data()),
+            warrantyServiceName: w.serviceName,
+            warrantyPhoneModel: w.phoneModelName,
+          }))
+        }),
+      )
+      setClaims(claimArrays.flat().sort((a, b) => b.createdAt - a.createdAt))
+    } catch {
+      setError('Failed to load warranty data. Please refresh.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { void load() }, [])
@@ -54,8 +60,14 @@ export function WarrantyAdmin() {
     try {
       const idToken = await auth.currentUser?.getIdToken()
       if (!idToken) return
-      await updateClaimAction(idToken, warrantyId, claimId, { status, adminNotes })
+      const result = await updateClaimAction(idToken, warrantyId, claimId, { status, adminNotes })
+      if (!result.ok) {
+        setError('Failed to update claim status. Please try again.')
+        return
+      }
       await load()
+    } catch {
+      setError('Failed to update claim status. Please try again.')
     } finally { setBusy(null) }
   }
 
@@ -69,6 +81,7 @@ export function WarrantyAdmin() {
 
   return (
     <div className={styles.root}>
+      {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
       {claims.length > 0 && (
         <div>
           <h2 className={styles.sectionTitle}>Claims Queue</h2>

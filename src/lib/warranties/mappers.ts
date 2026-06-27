@@ -48,6 +48,7 @@ export function toWarranty(id: string, d: D): Warranty {
     endDate: d.endDate ?? 0,
     status: (d.status as WarrantyStatus) ?? 'active',
     createdAt: d.createdAt ?? 0,
+    updatedAt: d.updatedAt ?? undefined,
   }
 }
 

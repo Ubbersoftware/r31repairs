@@ -13,6 +13,7 @@ export interface Warranty {
   endDate: number
   status: WarrantyStatus
   createdAt: number
+  updatedAt?: number
 }
 
 export type ClaimStatus = 'received' | 'assessing' | 'resolved' | 'rejected'

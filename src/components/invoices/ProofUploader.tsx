@@ -6,6 +6,7 @@ import { auth, storage, db } from '@/lib/firebase/client'
 import { submitProofOfPaymentAction } from '@/app/(customer)/orders/actions'
 import { PAYMENT_CHANNELS, type PaymentMethod, type PaymentChannel } from '@/lib/invoices/paymentMethods'
 import { mergeSettings } from '@/lib/settings/defaults'
+import type { ShopSettings } from '@/lib/types/settings'
 
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp']
 const MAX = 5_000_000
@@ -19,7 +20,7 @@ export function ProofUploader({ orderId, invoiceId, onDone }: { orderId: string;
   useEffect(() => {
     getDoc(doc(db, 'r31_settings', 'shop'))
       .then((snap) => {
-        const s = mergeSettings(snap.exists() ? snap.data() as any : null)
+        const s = mergeSettings(snap.exists() ? snap.data() as Partial<ShopSettings> : null)
         if (s.paymentChannels.length) setChannels(s.paymentChannels)
       })
       .catch(() => {}) // fall back to PAYMENT_CHANNELS on error
